@@ -1,11 +1,14 @@
+#include <process.h>	//multi threading
 #include <winsock.h>
 #include <iostream>	//cerr
 
 #pragma comment(lib, "wsock32.lib")	//link winsock lib
+#pragma comment(lib, "libcmt.lib")	//for process.h
 #define WSVERS MAKEWORD(2,0)
 
 SOCKET connectsock(const char*, const char*);
 void UDP_IM_Client(const char* , const char* );
+void listener(void* socketNum);		//monitor for messages from server
 
 int main(int argc, char **argv)	{
 	
@@ -32,6 +35,9 @@ int main(int argc, char **argv)	{
 
 	UDP_IM_Client(serverName, portNum);
 
+	while(true)	{
+	}
+
 	WSACleanup();
 	return 0;
 
@@ -40,13 +46,30 @@ int main(int argc, char **argv)	{
 }
 
 void UDP_IM_Client(const char* serverName, const char* portNum)	{
-	//Start thread to monitor connection to server.
-	//Present user with dialog for choices.
-	//On Quit, close connection.
+
 	std::cout << "Yohoo!"<< std::endl;
 
 	SOCKET s;
 	s = connectsock(serverName, portNum);
+
+	//Start thread to monitor connection to server.
+	_beginthread(listener, 0, (void*) &s);	
+	
+	//Sign on to server.
+	
+		
+	//on quit, exit
+	closesocket(s);
+}
+
+/*
+ * listener
+ * monitors and displays messages from server.
+ *
+ * @param socketNum
+ */
+void listener(void* socketNum)	{
+	std::cout << "Listening for server messages..." <<std::endl;
 }
 
 /*
