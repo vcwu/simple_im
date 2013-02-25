@@ -4,6 +4,7 @@
 #pragma comment(lib, "wsock32.lib")	//link winsock lib
 #define WSVERS MAKEWORD(2,0)
 
+SOCKET connectsock(const char*, const char*);
 void UDP_IM_Client(const char* , const char* );
 
 int main(int argc, char **argv)	{
@@ -13,7 +14,7 @@ int main(int argc, char **argv)	{
 	WSADATA wsadata;
 
 	//Take in user specifed port num and server name.
-	if(argc == 2)	{
+	if(argc == 3)	{
 		serverName = argv[1];
 		portNum = argv[2];
 	}
@@ -27,23 +28,70 @@ int main(int argc, char **argv)	{
 		exit(1);
 	}
 
+		
+
 	UDP_IM_Client(serverName, portNum);
 
 	WSACleanup();
 	return 0;
-	//Allocate socket, find unused port and bind.
-//	SOCKET s;
-//	s = socket(PF_INET, SOCK_DGRAM,"UDP");
 
-	//Connect socket to server.
 	
-	//Application time!
-	//
-	//Start thread to monitor connection to server.
-	//Present user with dialog for choices.
-	//On Quit, close connection.
+	
 }
 
 void UDP_IM_Client(const char* serverName, const char* portNum)	{
+	//Start thread to monitor connection to server.
+	//Present user with dialog for choices.
+	//On Quit, close connection.
 	std::cout << "Yohoo!"<< std::endl;
+
+	SOCKET s;
+	s = connectsock(serverName, portNum);
+}
+
+/*
+ * connectsock - allocate and connect socket.
+ * modified from Comer's Internetworking with TCP/IP Volume III, section 7.7
+ *
+ * @param serverName server IP address in dotted-decimal format
+ * @param portNum	
+ */
+SOCKET connectsock(const char* serverName, const char* portNum)	{
+	const char* transport = "udp";
+	int s, type;	//socket descriptor and socket type
+
+	struct sockaddr_in sin;	// an internet endpoint address
+	struct protoent *ppe;	// pointer to protocol information entry
+
+	memset(&sin, 0, sizeof(sin));
+	sin.sin_family = AF_INET;
+	sin.sin_port = htons((u_short)atoi(portNum)); 
+	sin.sin_addr.s_addr = inet_addr(serverName);
+	
+	//map protocol name to protocol number, define type
+	ppe = getprotobyname(transport);
+	if(strcmp(transport, "udp") == 0 )	
+		type = SOCK_DGRAM;
+	else
+		type = SOCK_STREAM;
+
+	//Finally, allocate a socket.
+	s = socket(PF_INET, type, ppe->p_proto);
+	if(s == INVALID_SOCKET)	{
+		std::cerr << "can't create socket";
+		WSACleanup();
+		exit(1);
+		
+	}
+
+	//Connect socket.
+	if(connect(s, (struct sockaddr*) &sin, sizeof(sin))==SOCKET_ERROR) 	
+	{
+		std::cerr << "can't connect to " << serverName << " " << portNum;
+		WSACleanup();
+		exit(1);
+	}
+
+	std::cout << "Socket Creation and connection successful" <<std::endl;
+	return s;
 }
