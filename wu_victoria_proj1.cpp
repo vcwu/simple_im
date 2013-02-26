@@ -15,8 +15,8 @@
 #pragma comment(lib, "libcmt.lib")	//for process.h
 #define WSVERS MAKEWORD(2,0)
 
-SOCKET connectsock(const char*, const char*);
-void UDP_IM_Client(const char* , const char* );
+SOCKET connectsock(const char*, const char*); 
+void UDP_IM_Client(SOCKET s);
 void listener(void* socketNum);		//monitor for messages from server
 
 /*
@@ -24,7 +24,7 @@ void listener(void* socketNum);		//monitor for messages from server
  */
 void signIn(int& msgNum, std::string name, SOCKET s);
 void logOut(int& msgNum, std::string name, SOCKET s);
-
+void menuDisplay();
 
 int main(int argc, char **argv)	{
 	
@@ -49,13 +49,18 @@ int main(int argc, char **argv)	{
 		exit(1);
 	}
 
-		
-
-	UDP_IM_Client(serverName, portNum);
-
+	//Connect to server.	
+	SOCKET s;
+	s = connectsock(serverName, portNum);
+	if(DEBUG)
+		std::cout << "Connected to socket " << s << std::endl;
 	
-
+	//Start up IM client.
+	UDP_IM_Client(s);
+	
+	//Wrap up.
 	std::cout << "Goodbye!" << std::endl;
+	closesocket(s);
 	WSACleanup();
 	return 0;
 
@@ -63,7 +68,7 @@ int main(int argc, char **argv)	{
 	
 }
 
-void UDP_IM_Client(const char* serverName, const char* portNum)	{
+void UDP_IM_Client(SOCKET s)	{
 
 
 	//Generate random num for message sequencing.
@@ -73,11 +78,6 @@ void UDP_IM_Client(const char* serverName, const char* portNum)	{
 	if(DEBUG)	
 		std::cout << "Generating msg num " << msgNum <<std::endl;
 	
-	//Connect to server.	
-	SOCKET s;
-	s = connectsock(serverName, portNum);
-	if(DEBUG)
-		std::cout << "Connected to socket " << s << std::endl;
 
 	//Start thread to monitor connection to server.
 	_beginthread(listener, 0, (void*) &s);	
@@ -86,23 +86,36 @@ void UDP_IM_Client(const char* serverName, const char* portNum)	{
 	std::string name;
 	std::cout << "Enter your IM name: ";
 	std::cin >> name;
-		signIn(msgNum,name, s);signIn(msgNum,name, s);
+	signIn(msgNum,name, s);
 
-	//Do stuff
-	//
-	
-	std::string input;
-	while(true)	{
+	//Display options, execute user's requests.
+	char input;
+	bool userContinue = true;
+	while(userContinue)	{
+		menuDisplay();
 		std::cin >> input;
-		if(input == "q")	
+		if(input == 'q')	
 			break;
 	}		
 	
 	//Sign off.
 	logOut(msgNum, name, s);	
 
-	//on quit, exit
-	closesocket(s);
+	
+}
+
+/*
+ * menuDisplay
+ * Print out menu display.
+ */
+void menuDisplay()	{
+	std::cout << "What would you like to do?" << std::endl;
+	std::cout << "\tCheck for messages (c)" << std::endl;
+	std::cout << "\tSend a message (s)" << std::endl;
+	std::cout << "\tGet a list of files to download (f) " << std::endl;
+	std::cout << "\tDownlaod a file (d)" << std::endl;
+	std::cout << "\tQuit (q)" << std::endl;
+	std::cout << std::endl;
 }
 
 /*
@@ -160,7 +173,7 @@ void logOut(int& msgNum, std::string name, SOCKET s)	{
 
 	std::string message = ss.str();
 
-	int bytes_sent = send(s, message.c_str(), sizeof(message.c_str()), 0);
+	int bytes_sent = send(s, message.c_str(), strlen(message.c_str()), 0);
 	if(bytes_sent == SOCKET_ERROR)	{
 		std::cerr << "Error in sending log off msg" << std::endl;
 	}
@@ -189,9 +202,10 @@ void listener(void* socketNum)	{
 	while(true)	{
 		if( recv(s, recvbuf, bufferLength, 0) == SOCKET_ERROR)	{
 			std::cerr << "Error in recv " << std::endl;
+			break;
 		}
 		else	{
-			printf( "FROM THE VOID you see a msg-> %s", recvbuf); 
+			printf( "-> %s", recvbuf); 
 		}
 	}
 }
