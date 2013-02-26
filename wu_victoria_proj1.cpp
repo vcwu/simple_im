@@ -22,9 +22,13 @@ void listener(void* socketNum);		//monitor for messages from server
 /*
  * IM Client Functions
  */
+void menuDisplay();
 void signIn(int& msgNum, std::string name, SOCKET s);
 void logOut(int& msgNum, std::string name, SOCKET s);
-void menuDisplay();
+void checkMessages(std::string name, SOCKET s);
+void sendMessage(std::string name, SOCKET s);
+void getFileNames(SOCKET s);
+void downloadFile(SOCKET S);
 
 int main(int argc, char **argv)	{
 	
@@ -73,8 +77,7 @@ void UDP_IM_Client(SOCKET s)	{
 
 	//Generate random num for message sequencing.
 	srand(time(NULL));
-	//int msgNum = rand() % 1000 + 10000;
-	int msgNum = 12345;
+	int msgNum = rand() % 1000 + 10000;
 	if(DEBUG)	
 		std::cout << "Generating msg num " << msgNum <<std::endl;
 	
@@ -94,8 +97,14 @@ void UDP_IM_Client(SOCKET s)	{
 	while(userContinue)	{
 		menuDisplay();
 		std::cin >> input;
-		if(input == 'q')	
-			break;
+		switch (input)	{
+			case 'c': checkMessages(name, s); break;
+			case 's': sendMessage(name, s); break;
+			case 'f': getFileNames(s); break;
+			case 'd': downloadFile(s); break;
+			case 'q': userContinue = false;	 break;
+			default: std::cout << "Invalid input." << std::endl;
+		}
 	}		
 	
 	//Sign off.
@@ -133,14 +142,9 @@ void signIn(int& msgNum, std::string name, SOCKET s)	{
 
 	std::cout << "MSG NUM : " << num << std::endl;
 
-	char buf[256];
-       	buf[256] = '\0';
 	std::stringstream ss;
-
 	ss << num << ";1;" << name;
-
 	std::string message = ss.str();
-	
 	
 
 	int bytes_sent = send(s, message.c_str(), strlen(message.c_str() ), 0);
@@ -154,6 +158,43 @@ void signIn(int& msgNum, std::string name, SOCKET s)	{
 	}
 	msgNum++;
 }
+
+/*
+ * checkMessages
+ * @param name user's handle 
+ * @param s Socket num
+ */
+void checkMessages(std::string name, SOCKET s)	{
+
+}
+
+/*
+ * sendMessage
+ * @param name user's handle
+ * @param s Socket number
+ */
+void sendMessage(std::string name, SOCKET s)	{
+
+}
+
+/*
+ * getFileNames
+ * @param s Socket number
+ */
+void getFileNames(SOCKET s)	{
+
+
+}
+
+/*
+ * downloadFile
+ * @param s Socket number
+ */
+void downloadFile(SOCKET s)	{
+
+
+}
+
 
 /*
  * logOut
@@ -202,10 +243,10 @@ void listener(void* socketNum)	{
 	while(true)	{
 		if( recv(s, recvbuf, bufferLength, 0) == SOCKET_ERROR)	{
 			std::cerr << "Error in recv " << std::endl;
-			break;
 		}
 		else	{
 			printf( "-> %s", recvbuf); 
+			std::cout << "-> " << std::endl << std::endl;
 		}
 	}
 }
