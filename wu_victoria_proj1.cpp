@@ -1,3 +1,10 @@
+
+//TODO
+//deal with listener thread erroring out
+//checking ack#s
+//Deal with logic error - send message => repeating display message, inifnite loop
+
+
 #ifndef DEBUG
 #define DEBUG 1
 #endif
@@ -25,10 +32,10 @@ void listener(void* socketNum);		//monitor for messages from server
 void menuDisplay();
 void signIn(int& msgNum, std::string name, SOCKET s);
 void logOut(int& msgNum, std::string name, SOCKET s);
-void checkMessages(std::string name, SOCKET s);
-void sendMessage(std::string name, SOCKET s);
-void getFileNames(SOCKET s);
-void downloadFile(SOCKET S);
+void checkMessages(int& msgNum, std::string name, SOCKET s);
+void sendMessage(int& msgNum, std::string name, SOCKET s);
+void getFileNames(int& msgNum, SOCKET s);
+void downloadFile(int& msgNum, SOCKET S);
 
 int main(int argc, char **argv)	{
 	
@@ -92,16 +99,20 @@ void UDP_IM_Client(SOCKET s)	{
 	signIn(msgNum,name, s);
 
 	//Display options, execute user's requests.
-	char input;
+	std::string input;
+	char command;
 	bool userContinue = true;
 	while(userContinue)	{
 		menuDisplay();
-		std::cin >> input;
-		switch (input)	{
-			case 'c': checkMessages(name, s); break;
-			case 's': sendMessage(name, s); break;
-			case 'f': getFileNames(s); break;
-			case 'd': downloadFile(s); break;
+		//Prevent unnecessary loops with default case by using getline instead of directly reading in char.
+		getline(std::cin, input);
+		(input.length() == 1) ? command = input.at(0) 
+			: command = 'X';
+		switch (command)	{
+			case 'c': checkMessages(msgNum, name, s); break;
+			case 's': sendMessage(msgNum, name, s); break;
+			case 'f': getFileNames(msgNum,s); break;
+			case 'd': downloadFile(msgNum, s); break;
 			case 'q': userContinue = false;	 break;
 			default: std::cout << "Invalid input." << std::endl;
 		}
@@ -137,13 +148,10 @@ void menuDisplay()	{
 void signIn(int& msgNum, std::string name, SOCKET s)	{
 	std::cout << "Signing in as " << name << std::endl;
 	
-	char num[10];
-	itoa(msgNum, num, 10);
-
-	std::cout << "MSG NUM : " << num << std::endl;
+	std::cout << "MSG NUM : " << msgNum << std::endl;
 
 	std::stringstream ss;
-	ss << num << ";1;" << name;
+	ss << msgNum << ";1;" << name;
 	std::string message = ss.str();
 	
 
@@ -164,7 +172,7 @@ void signIn(int& msgNum, std::string name, SOCKET s)	{
  * @param name user's handle 
  * @param s Socket num
  */
-void checkMessages(std::string name, SOCKET s)	{
+void checkMessages(int& msgNum, std::string name, SOCKET s)	{
 
 }
 
@@ -173,15 +181,37 @@ void checkMessages(std::string name, SOCKET s)	{
  * @param name user's handle
  * @param s Socket number
  */
-void sendMessage(std::string name, SOCKET s)	{
+void sendMessage(int& msgNum, std::string name, SOCKET s)	{
+	//Get user input.
+	std::string buddy;
+	std::string message;
+	std::cout << "Send to: " << std::endl;
+	std::getline(std::cin, buddy);
+	std::cout << "Message: " << std::endl;
+	std::getline(std::cin, message);
 
+	//Construct socket message.
+	std::stringstream ss;
+	ss << msgNum << ";2;" << name << std::endl;
+	ss << buddy << std::endl;
+	ss << message;
+	std::string udpMessage = ss.str();
+
+	int bytes_sent = send(s, udpMessage.c_str(), strlen(udpMessage.c_str() ), 0);
+	if(bytes_sent == SOCKET_ERROR)	{
+		std::cerr << "error in sending user message" << std::endl;
+	}
+	else	{
+		std::cout << "SENT" << std::endl;
+	}
+	msgNum++;
 }
 
 /*
  * getFileNames
  * @param s Socket number
  */
-void getFileNames(SOCKET s)	{
+void getFileNames(int& msgNum, SOCKET s)	{
 
 
 }
@@ -190,7 +220,7 @@ void getFileNames(SOCKET s)	{
  * downloadFile
  * @param s Socket number
  */
-void downloadFile(SOCKET s)	{
+void downloadFile(int& msgNum, SOCKET s)	{
 
 
 }
