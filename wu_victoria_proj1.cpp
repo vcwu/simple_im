@@ -3,7 +3,8 @@
 //deal with listener thread erroring out
 //checking ack#s
 //Deal with logic error - send message => repeating display message, inifnite loop
-
+//msg numbers are off
+//when sending message, random junk added on at end
 
 #ifndef DEBUG
 #define DEBUG 1
@@ -202,7 +203,7 @@ void sendMessage(int& msgNum, std::string name, SOCKET s)	{
 		std::cerr << "error in sending user message" << std::endl;
 	}
 	else	{
-		std::cout << "SENT" << std::endl;
+		std::cout << "SENT message: " << message << std::endl;
 	}
 	msgNum++;
 }
@@ -213,6 +214,16 @@ void sendMessage(int& msgNum, std::string name, SOCKET s)	{
  */
 void getFileNames(int& msgNum, SOCKET s)	{
 
+	//Construct socket message.
+	std::stringstream ss;
+	ss << msgNum << ";4;filelist" << std::endl;
+	std::string message = ss.str();
+
+	int bytes_sent = send(s, message.c_str(), strlen(message.c_str() ), 0);
+	if(bytes_sent == SOCKET_ERROR)	{
+		std::cerr << "error in sending user message" << std::endl;
+	}
+	msgNum++;
 
 }
 
