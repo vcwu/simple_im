@@ -4,20 +4,32 @@
  * Spring 2013
  * Victoria Wu
  */
-#include <winsock.h>
-#pragma comment(lib, "wsock32.lib")	//link winsock lib
 
+#include <cstdlib>	//rand, srand
+#include <process.h>	//multi threading
+#include <time.h>	//srand time
+#include <winsock.h>
+#include <sstream>
+#include <queue>
+#pragma comment(lib, "wsock32.lib")	//link winsock lib
+#pragma comment(lib, "libcmt.lib")	//for process.h
 
 class IM_Client {
 	private: 
 		SOCKET s;
 		int msgNum;
 		std::string name;
+		void connectsock(const char* serverName, const char* portNum);
+		static void listener(void* socketNum);	//monitor for messages from server
+
+		std::queue<std::string> notifications;
+		std::queue<std::string> messages;
+		std::queue<std::string> acks;
+
 	public:
-		IM_Client();
+		IM_Client(const char* serverName, const char* portNum);
 		~IM_Client();
 
-		void connectsock(const char* serverName, const char* portNum);
 
 		void menuDisplay();
 		void signIn();
@@ -25,10 +37,41 @@ class IM_Client {
 		void checkMessages();
 		void sendMessage();
 		void getFileNames();
-		void downloadFiles();
+		void downloadFile();
+		void shutdown();		
+};
+
+
+IM_Client::IM_Client(const char* serverName, const char* portNum)	{
+
+	//Link to winsock lib.
+	WSADATA wsadata;
+	if(WSAStartup(MAKEWORD(2,0), &wsadata) !=0)	{
+		std::cerr << "WSAStartup failed.";
+		exit(1);	
+	}
+
+	//Connect to a socket.
+	connectsock(serverName, portNum);
+
+	//Init other variables.
+	srand(time(NULL));
+	msgNum = rand() % 1000 + 10000;
+
+	name = "NO NAME";	
 		
 }
 
+IM_Client::~IM_Client()	{}
+
+/*
+ * shutdown
+ * releases socket.
+ */
+void IM_Client::shutdown()	{
+	WSACleanup();
+	closesocket(s);
+}
 
 /*
  * connectsock - allocate and connect socket.
@@ -37,9 +80,9 @@ class IM_Client {
  * @param serverName server IP address in dotted-decimal format
  * @param portNum	
  */
-void connectsock(const char* serverName, const char* portNum)	{
+void IM_Client::connectsock(const char* serverName, const char* portNum)	{
 	const char* transport = "udp";
-	int s, type;	//socket descriptor and socket type
+	int  type;	//socket descriptor and socket type
 
 	struct sockaddr_in sin;	// an internet endpoint address
 	struct protoent *ppe;	// pointer to protocol information entry
@@ -74,16 +117,8 @@ void connectsock(const char* serverName, const char* portNum)	{
 	}
 
 	std::cout << "Socket Creation and connection successful" <<std::endl;
-	return s;
-
-
-IM_Client::IM_Client()	{
-
-	//Generate random num for message sequencing.
-	srand(time(NULL));
-	int msgNum = rand() % 1000 + 10000;
-
 }
+
 
 void IM_Client::menuDisplay()	{
 	std::cout << "What would you like to do?" << std::endl;
@@ -96,6 +131,10 @@ void IM_Client::menuDisplay()	{
 }
 
 void IM_Client::signIn()	{	
+	
+	std::cout << "What is your IM name? " << std::endl;
+	std::getline(std::cin, name);
+
 	std::cout << "Signing in as " << name << std::endl;
 	
 	std::cout << "MSG NUM : " << msgNum << std::endl;
@@ -104,7 +143,6 @@ void IM_Client::signIn()	{
 	ss << msgNum << ";1;" << name;
 	std::string message = ss.str();
 	
-
 	int bytes_sent = send(s, message.c_str(), strlen(message.c_str() ), 0);
 	if(bytes_sent == SOCKET_ERROR)	{
 		std::cerr << "error in sending sign in msg" << std::endl;	
@@ -115,9 +153,23 @@ void IM_Client::signIn()	{
 		std::cout << "Message: " << message.c_str() << std::endl;
 	}
 	msgNum++;
-}
+	//display confirm from server
+	//
+		
+	const int bufferLength = 256;
+	char recvbuf[bufferLength];
+	if(recv(s, recvbuf, bufferLength, 0) == SOCKET_ERROR )	{
+		std::cerr << "error in recv " << std::endl;
+	}
+	else	{
+		printf("-> %s -> \n", recvbuf);
+	}
 
-void sendMessage()	{
+	//Start thread to monitor connection to server.
+	_beginthread(listener, 0, (void*) &s);	
+
+}
+void IM_Client::sendMessage()	{
 	//Get user input.
 	std::string buddy;
 	std::string message;
@@ -143,7 +195,32 @@ void sendMessage()	{
 	msgNum++;
 }
 
-void logOut()	{
+void IM_Client::checkMessages()	{
+
+}
+
+/*
+ * getFileNames
+ */
+void IM_Client::getFileNames()	{
+
+	//Construct socket message.
+	std::stringstream ss;
+	ss << msgNum << ";4;filelist" << std::endl;
+	std::string message = ss.str();
+
+	int bytes_sent = send(s, message.c_str(), strlen(message.c_str() ), 0);
+	if(bytes_sent == SOCKET_ERROR)	{
+		std::cerr << "error in sending user message" << std::endl;
+	}
+	msgNum++;
+
+}
+void IM_Client::downloadFile()	{
+
+}
+
+void IM_Client::logOut()	{
 	std::cout << "Logging off... " << std::endl;
 	
 	char num[5];
@@ -163,3 +240,34 @@ void logOut()	{
 		std::cout << "Msg: " << message << std::endl;
 	}
 }
+
+/*
+ * listener
+ * monitors and displays messages from server.
+ *
+ * @param socketNum
+ */
+void IM_Client::listener(void* socketNum, void* )	{
+	if(DEBUG)
+		std::cout << "Listening for server messages..." <<std::endl;
+	
+	SOCKET s = *( (SOCKET*)socketNum);
+	if(DEBUG)
+		std::cout << "Listening to socket " << s << std::endl;
+	const int bufferLength = 256;
+	char recvbuf[bufferLength];
+	
+	while(true)	{
+			std::cerr << "Error in recv " << std::endl;
+		
+		
+		if(recv(s, recvbuf, bufferLength, 0 ) == SOCKET_ERROR)	{
+		}
+		else	{
+//			printf( "-> %s", recvbuf); 
+			std::cout << "-> " << std::endl << std::endl;
+		}
+	}
+}
+
+
