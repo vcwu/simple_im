@@ -11,21 +11,22 @@
 #include <winsock.h>
 #include <sstream>
 #include <queue>
+#include "MessageQs.h"	//queues to handle messages
 #pragma comment(lib, "wsock32.lib")	//link winsock lib
 #pragma comment(lib, "libcmt.lib")	//for process.h
 
 class IM_Client {
 	private: 
-		SOCKET s;
-		int msgNum;
 		std::string name;
+		struct sharedinfo {
+			SOCKET s;
+			int msgNum;
+			MessageQs listener;
+		} shared;	//I don't know how to make this better D:
 		void connectsock(const char* serverName, const char* portNum);
-		static void listener(void* socketNum);	//monitor for messages from server
-
-		std::queue<std::string> notifications;
-		std::queue<std::string> messages;
-		std::queue<std::string> acks;
-
+		static void startListening(void* listener);	//monitor for messages from server
+	
+	
 	public:
 		IM_Client(const char* serverName, const char* portNum);
 		~IM_Client();
@@ -56,7 +57,7 @@ IM_Client::IM_Client(const char* serverName, const char* portNum)	{
 
 	//Init other variables.
 	srand(time(NULL));
-	msgNum = rand() % 1000 + 10000;
+	shared.msgNum = rand() % 1000 + 10000;
 
 	name = "NO NAME";	
 		
@@ -70,7 +71,7 @@ IM_Client::~IM_Client()	{}
  */
 void IM_Client::shutdown()	{
 	WSACleanup();
-	closesocket(s);
+	closesocket(shared.s);
 }
 
 /*
@@ -100,8 +101,8 @@ void IM_Client::connectsock(const char* serverName, const char* portNum)	{
 		type = SOCK_STREAM;
 
 	//Finally, allocate a socket.
-	s = socket(PF_INET, type, ppe->p_proto);
-	if(s == INVALID_SOCKET)	{
+	shared.s = socket(PF_INET, type, ppe->p_proto);
+	if(shared.s == INVALID_SOCKET)	{
 		std::cerr << "can't create socket";
 		WSACleanup();
 		exit(1);
@@ -109,7 +110,7 @@ void IM_Client::connectsock(const char* serverName, const char* portNum)	{
 	}
 
 	//Connect socket.
-	if(connect(s, (struct sockaddr*) &sin, sizeof(sin))==SOCKET_ERROR) 	
+	if(connect(shared.s, (struct sockaddr*) &sin, sizeof(sin))==SOCKET_ERROR) 	
 	{
 		std::cerr << "can't connect to " << serverName << " " << portNum;
 		WSACleanup();
@@ -137,13 +138,13 @@ void IM_Client::signIn()	{
 
 	std::cout << "Signing in as " << name << std::endl;
 	
-	std::cout << "MSG NUM : " << msgNum << std::endl;
+	std::cout << "MSG NUM : " << shared.msgNum << std::endl;
 
 	std::stringstream ss;
-	ss << msgNum << ";1;" << name;
+	ss << shared.msgNum << ";1;" << name;
 	std::string message = ss.str();
 	
-	int bytes_sent = send(s, message.c_str(), strlen(message.c_str() ), 0);
+	int bytes_sent = send(shared.s, message.c_str(), strlen(message.c_str() ), 0);
 	if(bytes_sent == SOCKET_ERROR)	{
 		std::cerr << "error in sending sign in msg" << std::endl;	
 	}
@@ -152,13 +153,13 @@ void IM_Client::signIn()	{
 		std::cout << "Sent " << bytes_sent << "bytes. " << std::endl;	
 		std::cout << "Message: " << message.c_str() << std::endl;
 	}
-	msgNum++;
+	shared.msgNum++;
 	//display confirm from server
 	//
 		
 	const int bufferLength = 256;
 	char recvbuf[bufferLength];
-	if(recv(s, recvbuf, bufferLength, 0) == SOCKET_ERROR )	{
+	if(recv(shared.s, recvbuf, bufferLength, 0) == SOCKET_ERROR )	{
 		std::cerr << "error in recv " << std::endl;
 	}
 	else	{
@@ -166,7 +167,7 @@ void IM_Client::signIn()	{
 	}
 
 	//Start thread to monitor connection to server.
-	_beginthread(listener, 0, (void*) &s);	
+	_beginthread(startListening, 0, (void*) &shared);	
 
 }
 void IM_Client::sendMessage()	{
@@ -180,19 +181,19 @@ void IM_Client::sendMessage()	{
 
 	//Construct socket message.
 	std::stringstream ss;
-	ss << msgNum << ";2;" << name << std::endl;
+	ss << shared.msgNum << ";2;" << name << std::endl;
 	ss << buddy << std::endl;
 	ss << message;
 	std::string udpMessage = ss.str();
 
-	int bytes_sent = send(s, udpMessage.c_str(), strlen(udpMessage.c_str() ), 0);
+	int bytes_sent = send(shared.s, udpMessage.c_str(), strlen(udpMessage.c_str() ), 0);
 	if(bytes_sent == SOCKET_ERROR)	{
 		std::cerr << "error in sending user message" << std::endl;
 	}
 	else	{
 		std::cout << "SENT message: " << message << std::endl;
 	}
-	msgNum++;
+	shared.msgNum++;
 }
 
 void IM_Client::checkMessages()	{
@@ -206,14 +207,14 @@ void IM_Client::getFileNames()	{
 
 	//Construct socket message.
 	std::stringstream ss;
-	ss << msgNum << ";4;filelist" << std::endl;
+	ss << shared.msgNum << ";4;filelist" << std::endl;
 	std::string message = ss.str();
 
-	int bytes_sent = send(s, message.c_str(), strlen(message.c_str() ), 0);
+	int bytes_sent = send(shared.s, message.c_str(), strlen(message.c_str() ), 0);
 	if(bytes_sent == SOCKET_ERROR)	{
 		std::cerr << "error in sending user message" << std::endl;
 	}
-	msgNum++;
+	shared.msgNum++;
 
 }
 void IM_Client::downloadFile()	{
@@ -224,14 +225,14 @@ void IM_Client::logOut()	{
 	std::cout << "Logging off... " << std::endl;
 	
 	char num[5];
-	itoa(msgNum, num, 10);
+	itoa(shared.msgNum, num, 10);
 	std::stringstream ss;
 
 	ss << num << ";3;" << name;
 
 	std::string message = ss.str();
 
-	int bytes_sent = send(s, message.c_str(), strlen(message.c_str()), 0);
+	int bytes_sent = send(shared.s, message.c_str(), strlen(message.c_str()), 0);
 	if(bytes_sent == SOCKET_ERROR)	{
 		std::cerr << "Error in sending log off msg" << std::endl;
 	}
@@ -242,32 +243,33 @@ void IM_Client::logOut()	{
 }
 
 /*
- * listener
+ * startListening 
  * monitors and displays messages from server.
  *
- * @param socketNum
+ * @param listener 
  */
-void IM_Client::listener(void* socketNum, void* )	{
+void IM_Client::startListening(void* listener)	{
 	if(DEBUG)
 		std::cout << "Listening for server messages..." <<std::endl;
 	
-	SOCKET s = *( (SOCKET*)socketNum);
-	if(DEBUG)
-		std::cout << "Listening to socket " << s << std::endl;
+	//SOCKET s = *( (SOCKET*)socketNum);
+	//if(DEBUG)
+		//std::cout << "Listening to socket " << s << std::endl;
 	const int bufferLength = 256;
 	char recvbuf[bufferLength];
 	
 	while(true)	{
-			std::cerr << "Error in recv " << std::endl;
+		std::cerr << "Error in recv " << std::endl;
 		
-		
-		if(recv(s, recvbuf, bufferLength, 0 ) == SOCKET_ERROR)	{
+	/*	if(recv(shared.s, recvbuf, bufferLength, 0 ) == SOCKET_ERROR)	{
 		}
 		else	{
-//			printf( "-> %s", recvbuf); 
+			printf( "-> %s", recvbuf); 
 			std::cout << "-> " << std::endl << std::endl;
 		}
+	*/
 	}
+
 }
 
 
