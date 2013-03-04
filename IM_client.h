@@ -23,14 +23,18 @@ class IM_Client {
 			int msgNum;
 			MessageQs listener;
 		} shared;	//I don't know how to make this better D:
+		
+		//Waits for ack from server.
+		void waitForAck();
 		void connectsock(const char* serverName, const char* portNum);
 		static void startListening(void* listener);	//monitor for messages from server
-	
+			
 	
 	public:
 		IM_Client(const char* serverName, const char* portNum);
 		~IM_Client();
 
+		void displayNotifications();
 
 		void menuDisplay();
 		void signIn();
@@ -42,6 +46,10 @@ class IM_Client {
 		void shutdown();		
 };
 
+
+void IM_Client::waitForAck()	{
+	shared.listener.waitForAck(shared.msgNum);
+}
 
 IM_Client::IM_Client(const char* serverName, const char* portNum)	{
 
@@ -120,6 +128,9 @@ void IM_Client::connectsock(const char* serverName, const char* portNum)	{
 	std::cout << "Socket Creation and connection successful" <<std::endl;
 }
 
+void IM_Client::displayNotifications()	{
+	shared.listener.displayNotifications();
+}
 
 void IM_Client::menuDisplay()	{
 	std::cout << "What would you like to do?" << std::endl;
@@ -154,8 +165,7 @@ void IM_Client::signIn()	{
 		std::cout << "Message: " << message.c_str() << std::endl;
 	}
 	shared.msgNum++;
-	//display confirm from server
-	//
+	//display confirm from servr
 		
 	const int bufferLength = 256;
 	char recvbuf[bufferLength];
@@ -193,11 +203,15 @@ void IM_Client::sendMessage()	{
 	else	{
 		std::cout << "SENT message: " << udpMessage << std::endl;
 	}
-	shared.msgNum++;
+
+	waitForAck();
+	shared.msgNum++;	
+
 }
 
 void IM_Client::checkMessages()	{
-
+	std::cout << "CHECKING MESSAGES" << std::endl;
+	shared.listener.getMessages();
 }
 
 /*
@@ -218,7 +232,9 @@ void IM_Client::getFileNames()	{
 	if(DEBUG)	{
 		std::cout << "Sent " << bytes_sent << "bytes. " << std::endl;	
 		std::cout << "Message: " << message.c_str() << std::endl;
-	}	
+	}		
+
+	waitForAck();	
 	shared.msgNum++;
 
 }
@@ -245,6 +261,7 @@ void IM_Client::logOut()	{
 		std::cout << "Sent: " << bytes_sent << "bytes." <<std::endl;
 		std::cout << "Msg: " << message << std::endl;
 	}
+	waitForAck();
 }
 
 /*
@@ -258,7 +275,7 @@ void IM_Client::startListening(void* listener)	{
 		std::cout << "Listening for server messages..." <<std::endl;
 	
 	Sharedinfo shared = *( ( Sharedinfo*) listener);
-	const int bufferLength = 512;
+	const int bufferLength = 550;
 	char recvbuf[bufferLength];
 	
 	while(true)	{
@@ -276,23 +293,24 @@ void IM_Client::startListening(void* listener)	{
 			std::getline(ss, code, ';');
 			std::getline(ss, messageNum, ';');
 			std::getline(ss, remainder, ';');
+	
 
-			if(code.compare("ack"))	{
+			if(code.compare("ack") ==0 || code.compare("fil") ==0)	{
 				shared.listener.putAck(meat);		
 			}
-			else if (code.find("From"))	{
+			else if (code.find("From") ==0 )	{
 				shared.listener.putMessage(meat);
 			}
-			else if (code.compare("Error"))	{
+			else if (code.compare("Error") == 0)	{
 				shared.listener.putNotification(meat);
-			}
-			else if(code.compare("fil"))	{
-				shared.listener.putFileChunk(meat);	
-			}
+			}	
 			//notifications from server
 			else	{
+				std::cout << "putting notification " << std:: endl << meat;
+
 				shared.listener.putNotification(meat);
 			}
+
 			printf( "-> %s", recvbuf); 
 			std::cout << "-> " << std::endl << std::endl;
 		}
