@@ -41,6 +41,7 @@ int main(int argc, char **argv)	{
 	char command;
 	bool userContinue = true;
 	while(userContinue)	{
+		im.displayNotifications();
 		im.menuDisplay();
 		//Prevent unnecessary loops with default case by using getline instead of directly reading in char.
 		getline(std::cin, input);
