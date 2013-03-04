@@ -18,7 +18,7 @@
 class IM_Client {
 	private: 
 		std::string name;
-		struct sharedinfo {
+		struct Sharedinfo {
 			SOCKET s;
 			int msgNum;
 			MessageQs listener;
@@ -191,7 +191,7 @@ void IM_Client::sendMessage()	{
 		std::cerr << "error in sending user message" << std::endl;
 	}
 	else	{
-		std::cout << "SENT message: " << message << std::endl;
+		std::cout << "SENT message: " << udpMessage << std::endl;
 	}
 	shared.msgNum++;
 }
@@ -214,6 +214,11 @@ void IM_Client::getFileNames()	{
 	if(bytes_sent == SOCKET_ERROR)	{
 		std::cerr << "error in sending user message" << std::endl;
 	}
+	
+	if(DEBUG)	{
+		std::cout << "Sent " << bytes_sent << "bytes. " << std::endl;	
+		std::cout << "Message: " << message.c_str() << std::endl;
+	}	
 	shared.msgNum++;
 
 }
@@ -252,22 +257,46 @@ void IM_Client::startListening(void* listener)	{
 	if(DEBUG)
 		std::cout << "Listening for server messages..." <<std::endl;
 	
-	//SOCKET s = *( (SOCKET*)socketNum);
-	//if(DEBUG)
-		//std::cout << "Listening to socket " << s << std::endl;
-	const int bufferLength = 256;
+	Sharedinfo shared = *( ( Sharedinfo*) listener);
+	const int bufferLength = 512;
 	char recvbuf[bufferLength];
 	
 	while(true)	{
-		std::cerr << "Error in recv " << std::endl;
 		
-	/*	if(recv(shared.s, recvbuf, bufferLength, 0 ) == SOCKET_ERROR)	{
+		if(recv(shared.s, recvbuf, bufferLength, 0 ) == SOCKET_ERROR)	{
+			//not really share what to do here.			
+
 		}
 		else	{
+			//Put data in appropriate queue.
+			std::stringstream ss(recvbuf);		
+			std::string meat(recvbuf);
+			std::string code, messageNum, remainder;
+
+			std::getline(ss, code, ';');
+			std::getline(ss, messageNum, ';');
+			std::getline(ss, remainder, ';');
+
+			if(code.compare("ack"))	{
+				shared.listener.putAck(meat);		
+			}
+			else if (code.find("From"))	{
+				shared.listener.putMessage(meat);
+			}
+			else if (code.compare("Error"))	{
+				shared.listener.putNotification(meat);
+			}
+			else if(code.compare("fil"))	{
+				shared.listener.putFileChunk(meat);	
+			}
+			//notifications from server
+			else	{
+				shared.listener.putNotification(meat);
+			}
 			printf( "-> %s", recvbuf); 
 			std::cout << "-> " << std::endl << std::endl;
 		}
-	*/
+	
 	}
 
 }
