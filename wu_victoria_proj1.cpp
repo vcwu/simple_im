@@ -59,6 +59,7 @@ int main(int argc, char **argv)	{
 
 	//Wrap up.
 	std::cout << "Goodbye!" << std::endl;
+	im.logOut();
 	im.shutdown();
 	return 0;
 }
