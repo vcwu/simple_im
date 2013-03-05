@@ -12,6 +12,8 @@
 class MessageQs	{
 	private:
 		CRITICAL_SECTION critSec;	
+		CONDITION_VARIABLE fileQ;
+		int validFile;
 //		CONDITION_VARIABLE ackStatus;
 		std::queue<std::string> notifications;	//Stuff client didn't request.
 		std::queue<std::string> messages;	//Messages from other users.
@@ -32,7 +34,9 @@ class MessageQs	{
 		void putMessage(std::string m);
 		void putAck(std::string m);
 		void putFileChunk(std::string m);
+		std::string getFileChunk();
 		void getMessages();
+
 };
 
 
@@ -57,6 +61,19 @@ void MessageQs::putFileChunk(std::string m)	{
 	EnterCriticalSection(&critSec);
 	file.push(m);
 	LeaveCriticalSection(&critSec);
+}
+
+std::string MessageQs::getFileChunk()	{
+	std::string message;
+		
+	//busy wait - to use cond var, need to fix problem about 
+	//losing wake up call
+	while(file.empty())	{}
+	EnterCriticalSection(&critSec);	
+	message = file.front();
+	file.pop();	
+	LeaveCriticalSection(&critSec);
+	return message;
 }
 
 void MessageQs::displayNotifications()	{
