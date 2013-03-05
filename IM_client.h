@@ -9,6 +9,7 @@
 #include <process.h>	//multi threading
 #include <time.h>	//srand time
 #include <winsock.h>
+#include <fstream>	//ftp
 #include <sstream>
 #include <queue>
 #include "MessageQs.h"	//queues to handle messages
@@ -17,6 +18,14 @@
 
 class IM_Client {
 	private: 
+	
+		//used for file transfer.
+		//not sure of more elegant way to do this T.T
+		struct temp	{
+			int num;	//msgNum for file transfer
+			MessageQs* mq;
+		};
+
 		std::string name;
 		SOCKET s;
 		int msgNum;
@@ -247,30 +256,17 @@ void IM_Client::getFileNames()	{
 
 }
 void IM_Client::downloadFile()	{
-	std::string fileName;
-	std::cout << "What file would you like to download? " << std::endl;
-	std::cin >> fileName;
 
-	int temp [2];
+	struct temp *t = (temp*) malloc(sizeof (struct temp)); 
+	t->num = msgNum;
+	t->mq = listener;
+	/*
+	int* temp = new int[2];
 	temp[0] = s;
 	temp[1] = msgNum;
+	*/
 	//Begin downloading thread...
-	_beginthread(startFileDownload, 0, (void*) temp );	
-	//Construct socket message.
-	std::stringstream ss;
-	ss << msgNum << ";5;" << fileName << std::endl;
-	std::string message = ss.str();
-
-	int bytes_sent = send(s, message.c_str(), strlen(message.c_str() ), 0);
-	if(bytes_sent == SOCKET_ERROR)	{
-		std::cerr << "error in sending file request" << std::endl;
-	}
-	
-	if(DEBUG)	{
-		std::cout << "Sent " << bytes_sent << "bytes. " << std::endl;	
-		std::cout << "Message: " << message.c_str() << std::endl;
-	}		
-
+	_beginthread(startFileDownload, 0, (void*) t);	
 
 	//Done with 	
 }
@@ -360,5 +356,53 @@ void IM_Client::startListening(void* l)	{
 }
 
 void IM_Client::startFileDownload(void* d)	{
+
+	if(DEBUG)
+		std::cout << "Starting file download " << std::endl;
+	//get socket, msgNum
+	/*int* data = (int*) d;	
+	SOCKET s = data[0];
+	int msgNum = data[1];
+	*/
 	
+	struct temp *t = (temp*) d;
+	MessageQs* listener = t->mq;
+	SOCKET s = listener->s;
+	int msgNum = t->num;
+	//get filename
+	std::string fileName;
+	std::cout << "What file would you like to download? " << std::endl;
+	std::cin >> fileName;
+
+	//Construct socket message.
+	std::stringstream ss;
+	ss << msgNum << ";5;" << fileName << std::endl;
+	std::string message = ss.str();
+
+	int bytes_sent = send(s, message.c_str(), strlen(message.c_str() ), 0);
+	if(bytes_sent == SOCKET_ERROR)	{
+		std::cerr << "error in sending file request" << std::endl;
+	}
+	
+	if(DEBUG)	{
+		std::cout << "Sent " << bytes_sent << "bytes. " << std::endl;	
+		std::cout << "Message: " << message.c_str() << std::endl;
+	}		
+
+	//Depending on ack, proceed or not
+	//assume they ask for valid file.
+	
+	int block = 2;	//request next block of data
+	int chunkSize = 512;	//full chunk size, used to determine last chunk
+	
+	std::fstream fout;
+	fout.open(fileName, std::fstream::out);
+	std::string chunk;	
+	do 
+	{
+		chunk = listener->getFileChunk();	
+		fout << chunk;
+	}while(chunk.length() >= chunkSize);
+	fout.close();
 }
+
