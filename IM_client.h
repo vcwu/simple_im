@@ -18,24 +18,23 @@
 class IM_Client {
 	private: 
 		std::string name;
-		struct Sharedinfo {
-			SOCKET s;
-			int msgNum;
-			MessageQs listener;
-		} shared;	//I don't know how to make this better D:
+		SOCKET s;
+		int msgNum;
+		MessageQs* listener;
 		
 		//Waits for ack from server.
 		void waitForAck();
 		void connectsock(const char* serverName, const char* portNum);
 		static void startListening(void* listener);	//monitor for messages from server
-			
+		static void startFileDownload(void* data);			
 	
 	public:
 		IM_Client(const char* serverName, const char* portNum);
 		~IM_Client();
 
 		void displayNotifications();
-
+		void displayAcks();
+		
 		void menuDisplay();
 		void signIn();
 		void logOut();
@@ -48,7 +47,9 @@ class IM_Client {
 
 
 void IM_Client::waitForAck()	{
-	shared.listener.waitForAck(shared.msgNum);
+	if(!listener->waitForAck(msgNum))	{
+		std::cout << "ACK msg# incorrect!! " << std::endl;
+	}
 }
 
 IM_Client::IM_Client(const char* serverName, const char* portNum)	{
@@ -65,21 +66,24 @@ IM_Client::IM_Client(const char* serverName, const char* portNum)	{
 
 	//Init other variables.
 	srand(time(NULL));
-	shared.msgNum = rand() % 1000 + 10000;
+	msgNum = rand() % 1000 + 10000;
 
 	name = "NO NAME";	
-		
+	listener = new MessageQs(s);	
+	listener->TESTER = "MY COPY";	
 }
 
-IM_Client::~IM_Client()	{}
+IM_Client::~IM_Client()	{
+	delete listener;
+}
 
 /*
  * shutdown
  * releases socket.
  */
 void IM_Client::shutdown()	{
+	closesocket(s);
 	WSACleanup();
-	closesocket(shared.s);
 }
 
 /*
@@ -94,7 +98,7 @@ void IM_Client::connectsock(const char* serverName, const char* portNum)	{
 	int  type;	//socket descriptor and socket type
 
 	struct sockaddr_in sin;	// an internet endpoint address
-	struct protoent *ppe;	// pointer to protocol information entry
+	struct protoent *ppe;	// pointer to protocol information entr
 
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
@@ -109,8 +113,8 @@ void IM_Client::connectsock(const char* serverName, const char* portNum)	{
 		type = SOCK_STREAM;
 
 	//Finally, allocate a socket.
-	shared.s = socket(PF_INET, type, ppe->p_proto);
-	if(shared.s == INVALID_SOCKET)	{
+	s = socket(PF_INET, type, ppe->p_proto);
+	if(s == INVALID_SOCKET)	{
 		std::cerr << "can't create socket";
 		WSACleanup();
 		exit(1);
@@ -118,7 +122,7 @@ void IM_Client::connectsock(const char* serverName, const char* portNum)	{
 	}
 
 	//Connect socket.
-	if(connect(shared.s, (struct sockaddr*) &sin, sizeof(sin))==SOCKET_ERROR) 	
+	if(connect(s, (struct sockaddr*) &sin, sizeof(sin))==SOCKET_ERROR) 	
 	{
 		std::cerr << "can't connect to " << serverName << " " << portNum;
 		WSACleanup();
@@ -128,8 +132,12 @@ void IM_Client::connectsock(const char* serverName, const char* portNum)	{
 	std::cout << "Socket Creation and connection successful" <<std::endl;
 }
 
+
+void IM_Client::displayAcks()	{
+	listener->displayAcks();
+}
 void IM_Client::displayNotifications()	{
-	shared.listener.displayNotifications();
+	listener->displayNotifications();
 }
 
 void IM_Client::menuDisplay()	{
@@ -137,7 +145,7 @@ void IM_Client::menuDisplay()	{
 	std::cout << "\tCheck for messages (c)" << std::endl;
 	std::cout << "\tSend a message (s)" << std::endl;
 	std::cout << "\tGet a list of files to download (f) " << std::endl;
-	std::cout << "\tDownlaod a file (d)" << std::endl;
+	std::cout << "\tDownload a file (d)" << std::endl;
 	std::cout << "\tQuit (q)" << std::endl;
 	std::cout << std::endl;
 }
@@ -149,13 +157,13 @@ void IM_Client::signIn()	{
 
 	std::cout << "Signing in as " << name << std::endl;
 	
-	std::cout << "MSG NUM : " << shared.msgNum << std::endl;
+	std::cout << "MSG NUM : " << msgNum << std::endl;
 
 	std::stringstream ss;
-	ss << shared.msgNum << ";1;" << name;
+	ss << msgNum << ";1;" << name;
 	std::string message = ss.str();
 	
-	int bytes_sent = send(shared.s, message.c_str(), strlen(message.c_str() ), 0);
+	int bytes_sent = send(s, message.c_str(), strlen(message.c_str() ), 0);
 	if(bytes_sent == SOCKET_ERROR)	{
 		std::cerr << "error in sending sign in msg" << std::endl;	
 	}
@@ -164,12 +172,12 @@ void IM_Client::signIn()	{
 		std::cout << "Sent " << bytes_sent << "bytes. " << std::endl;	
 		std::cout << "Message: " << message.c_str() << std::endl;
 	}
-	shared.msgNum++;
+	msgNum++;
 	//display confirm from servr
 		
 	const int bufferLength = 256;
 	char recvbuf[bufferLength];
-	if(recv(shared.s, recvbuf, bufferLength, 0) == SOCKET_ERROR )	{
+	if(recv(s, recvbuf, bufferLength, 0) == SOCKET_ERROR )	{
 		std::cerr << "error in recv " << std::endl;
 	}
 	else	{
@@ -177,7 +185,7 @@ void IM_Client::signIn()	{
 	}
 
 	//Start thread to monitor connection to server.
-	_beginthread(startListening, 0, (void*) &shared);	
+	_beginthread(startListening, 0, (void*) listener);	
 
 }
 void IM_Client::sendMessage()	{
@@ -191,12 +199,12 @@ void IM_Client::sendMessage()	{
 
 	//Construct socket message.
 	std::stringstream ss;
-	ss << shared.msgNum << ";2;" << name << std::endl;
+	ss << msgNum << ";2;" << name << std::endl;
 	ss << buddy << std::endl;
 	ss << message;
 	std::string udpMessage = ss.str();
 
-	int bytes_sent = send(shared.s, udpMessage.c_str(), strlen(udpMessage.c_str() ), 0);
+	int bytes_sent = send(s, udpMessage.c_str(), strlen(udpMessage.c_str() ), 0);
 	if(bytes_sent == SOCKET_ERROR)	{
 		std::cerr << "error in sending user message" << std::endl;
 	}
@@ -204,14 +212,14 @@ void IM_Client::sendMessage()	{
 		std::cout << "SENT message: " << udpMessage << std::endl;
 	}
 
-	waitForAck();
-	shared.msgNum++;	
+	//waitForAck();
+	msgNum++;	
 
 }
 
 void IM_Client::checkMessages()	{
 	std::cout << "CHECKING MESSAGES" << std::endl;
-	shared.listener.getMessages();
+	listener->getMessages();
 }
 
 /*
@@ -221,10 +229,10 @@ void IM_Client::getFileNames()	{
 
 	//Construct socket message.
 	std::stringstream ss;
-	ss << shared.msgNum << ";4;filelist" << std::endl;
+	ss << msgNum << ";4;filelist" << std::endl;
 	std::string message = ss.str();
 
-	int bytes_sent = send(shared.s, message.c_str(), strlen(message.c_str() ), 0);
+	int bytes_sent = send(s, message.c_str(), strlen(message.c_str() ), 0);
 	if(bytes_sent == SOCKET_ERROR)	{
 		std::cerr << "error in sending user message" << std::endl;
 	}
@@ -234,26 +242,51 @@ void IM_Client::getFileNames()	{
 		std::cout << "Message: " << message.c_str() << std::endl;
 	}		
 
-	waitForAck();	
-	shared.msgNum++;
+	//waitForAck();	
+	msgNum++;
 
 }
 void IM_Client::downloadFile()	{
+	std::string fileName;
+	std::cout << "What file would you like to download? " << std::endl;
+	std::cin >> fileName;
 
+	int temp [2];
+	temp[0] = s;
+	temp[1] = msgNum;
+	//Begin downloading thread...
+	_beginthread(startFileDownload, 0, (void*) temp );	
+	//Construct socket message.
+	std::stringstream ss;
+	ss << msgNum << ";5;" << fileName << std::endl;
+	std::string message = ss.str();
+
+	int bytes_sent = send(s, message.c_str(), strlen(message.c_str() ), 0);
+	if(bytes_sent == SOCKET_ERROR)	{
+		std::cerr << "error in sending file request" << std::endl;
+	}
+	
+	if(DEBUG)	{
+		std::cout << "Sent " << bytes_sent << "bytes. " << std::endl;	
+		std::cout << "Message: " << message.c_str() << std::endl;
+	}		
+
+
+	//Done with 	
 }
 
 void IM_Client::logOut()	{
 	std::cout << "Logging off... " << std::endl;
 	
 	char num[5];
-	itoa(shared.msgNum, num, 10);
+	itoa(msgNum, num, 10);
 	std::stringstream ss;
 
 	ss << num << ";3;" << name;
 
 	std::string message = ss.str();
 
-	int bytes_sent = send(shared.s, message.c_str(), strlen(message.c_str()), 0);
+	int bytes_sent = send(s, message.c_str(), strlen(message.c_str()), 0);
 	if(bytes_sent == SOCKET_ERROR)	{
 		std::cerr << "Error in sending log off msg" << std::endl;
 	}
@@ -261,7 +294,7 @@ void IM_Client::logOut()	{
 		std::cout << "Sent: " << bytes_sent << "bytes." <<std::endl;
 		std::cout << "Msg: " << message << std::endl;
 	}
-	waitForAck();
+	//waitForAck();
 }
 
 /*
@@ -270,17 +303,17 @@ void IM_Client::logOut()	{
  *
  * @param listener 
  */
-void IM_Client::startListening(void* listener)	{
+void IM_Client::startListening(void* l)	{
 	if(DEBUG)
 		std::cout << "Listening for server messages..." <<std::endl;
 	
-	Sharedinfo shared = *( ( Sharedinfo*) listener);
+	MessageQs* listener = ( (MessageQs*) l);
 	const int bufferLength = 550;
 	char recvbuf[bufferLength];
 	
 	while(true)	{
 		
-		if(recv(shared.s, recvbuf, bufferLength, 0 ) == SOCKET_ERROR)	{
+		if(recv(listener->s, recvbuf, bufferLength, 0 ) == SOCKET_ERROR)	{
 			//not really share what to do here.			
 
 		}
@@ -294,29 +327,38 @@ void IM_Client::startListening(void* listener)	{
 			std::getline(ss, messageNum, ';');
 			std::getline(ss, remainder, ';');
 	
-
-			if(code.compare("ack") ==0 || code.compare("fil") ==0)	{
-				shared.listener.putAck(meat);		
+/*
+			if(code.compare("ack") ==0 || || code.compare("Error")==0)	{
+				//if(atoi(messageNum.c_str()) != listener->msgNum){
+				//	printf("Wrong ack num");
+				//}
+				printf("L-> putting in ack");
+				listener->putAck(meat);		
 			}
 			else if (code.find("From") ==0 )	{
-				shared.listener.putMessage(meat);
+				printf("L-> putting in from");
+				listener->putMessage(meat);
 			}
-			else if (code.compare("Error") == 0)	{
-				shared.listener.putNotification(meat);
-			}	
+			else if (code.compare("fil") ==0)	{
+				printf("L->putting in files");
+				listener->putFileChunk(meat);
+			}
 			//notifications from server
 			else	{
 				std::cout << "putting notification " << std:: endl << meat;
 
-				shared.listener.putNotification(meat);
+				listener->putNotification(meat);
 			}
-
-			printf( "-> %s", recvbuf); 
-			std::cout << "-> " << std::endl << std::endl;
+*/
+			listener->putAck(meat);
+//			printf( "-> %s", recvbuf); 
+//			std::cout << "-> " << std::endl << std::endl;
 		}
 	
 	}
 
 }
 
-
+void IM_Client::startFileDownload(void* d)	{
+	
+}
