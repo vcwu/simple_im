@@ -23,6 +23,7 @@ class IM_Client {
 		//not sure of more elegant way to do this T.T
 		struct temp	{
 			int num;	//msgNum for file transfer
+			std::string fileName;
 			MessageQs* mq;
 		};
 
@@ -256,15 +257,22 @@ void IM_Client::getFileNames()	{
 
 }
 void IM_Client::downloadFile()	{
+	//get filename
+	std::string name;
+	std::cout << "What file would you like to download? " << std::endl;
+	std::cin >> name;
 
 	struct temp *t = (temp*) malloc(sizeof (struct temp)); 
 	t->num = msgNum;
 	t->mq = listener;
+	t->fileName= name;
 	/*
 	int* temp = new int[2];
 	temp[0] = s;
 	temp[1] = msgNum;
 	*/
+	
+	std::cout << "Starting file download " << std::endl;
 	//Begin downloading thread...
 	_beginthread(startFileDownload, 0, (void*) t);	
 
@@ -358,7 +366,7 @@ void IM_Client::startListening(void* l)	{
 void IM_Client::startFileDownload(void* d)	{
 
 	if(DEBUG)
-		std::cout << "Starting file download " << std::endl;
+		std::cout << "FROM:THREAD Starting file download " << std::endl;
 	//get socket, msgNum
 	/*int* data = (int*) d;	
 	SOCKET s = data[0];
@@ -369,14 +377,10 @@ void IM_Client::startFileDownload(void* d)	{
 	MessageQs* listener = t->mq;
 	SOCKET s = listener->s;
 	int msgNum = t->num;
-	//get filename
-	std::string fileName;
-	std::cout << "What file would you like to download? " << std::endl;
-	std::cin >> fileName;
-
+	std::string file = t->fileName;
 	//Construct socket message.
 	std::stringstream ss;
-	ss << msgNum << ";5;" << fileName << std::endl;
+	ss << msgNum << ";5;" << file << std::endl;
 	std::string message = ss.str();
 
 	int bytes_sent = send(s, message.c_str(), strlen(message.c_str() ), 0);
@@ -396,7 +400,7 @@ void IM_Client::startFileDownload(void* d)	{
 	int chunkSize = 512;	//full chunk size, used to determine last chunk
 	
 	std::fstream fout;
-	fout.open(fileName, std::fstream::out);
+	fout.open(file, std::fstream::out);
 	std::string chunk;	
 	do 
 	{
