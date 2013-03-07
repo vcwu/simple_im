@@ -16,16 +16,19 @@
 #pragma comment(lib, "wsock32.lib")	//link winsock lib
 #pragma comment(lib, "libcmt.lib")	//for process.h
 
+
+
+
 class IM_Client {
 	private: 
 	
 		//used for file transfer.
 		//not sure of more elegant way to do this T.T
-		struct temp	{
+		typedef struct {
 			int num;	//msgNum for file transfer
 			std::string fileName;
 			MessageQs* mq;
-		};
+		} temp;
 
 		std::string name;
 		SOCKET s;
@@ -195,8 +198,8 @@ void IM_Client::signIn()	{
 	}
 
 	//Start thread to monitor connection to server.
-	_beginthread(startListening, 0, (void*) listener);	
 
+	_beginthread(startListening, 0, (void*) listener);	
 }
 void IM_Client::sendMessage()	{
 	//Get user input.
@@ -260,21 +263,29 @@ void IM_Client::downloadFile()	{
 	//get filename
 	std::string name;
 	std::cout << "What file would you like to download? " << std::endl;
-	std::cin >> name;
+	std::getline(std::cin, name );
 
-	struct temp *t = (temp*) malloc(sizeof (struct temp)); 
-	t->num = msgNum;
-	t->mq = listener;
-	t->fileName= name;
+	struct temp data; 
+	data.num = msgNum;
+	data.mq = listener;
+	data.fileName= name;
+	
+	if(DEBUG)	{
+		std::cout << "from Client, then struct" << std::endl;
+		std::cout << "socket num: " << s << "; " << data.mq->s << std::endl;
+		std::cout << "msgnum : " << msgNum << "; " << data.num << std::endl;
+		std::cout << "file name: " << name << "; " << data.fileName  << std::endl;
+		std::cout << "DONE" << std::endl;
+	}	
+//	struct temp *t = &data;
 	/*
 	int* temp = new int[2];
 	temp[0] = s;
 	temp[1] = msgNum;
 	*/
 	
-	std::cout << "Starting file download " << std::endl;
 	//Begin downloading thread...
-	_beginthread(startFileDownload, 0, (void*) t);	
+	_beginthread(startFileDownload, 0, (void* ) &data);	
 
 	//Done with 	
 }
@@ -367,17 +378,24 @@ void IM_Client::startFileDownload(void* d)	{
 
 	if(DEBUG)
 		std::cout << "FROM:THREAD Starting file download " << std::endl;
-	//get socket, msgNum
-	/*int* data = (int*) d;	
-	SOCKET s = data[0];
-	int msgNum = data[1];
-	*/
+
 	
-	struct temp *t = (temp*) d;
-	MessageQs* listener = t->mq;
+	struct temp t = *((struct temp*)d);
+	MessageQs* listener = t.mq;
 	SOCKET s = listener->s;
-	int msgNum = t->num;
-	std::string file = t->fileName;
+
+	int msgNum = t.num;
+	std::string file = t.fileName;
+	
+
+	if(DEBUG)	{
+		std::cout << "from file download thread" << std::endl;
+		std::cout << "socket num: " << s << std::endl;
+		std::cout << "msgnum : " << msgNum << std::endl;
+		std::cout << "file name: " << file << std::endl;
+		std::cout << "DONE" << std::endl;
+	}	
+	/*	
 	//Construct socket message.
 	std::stringstream ss;
 	ss << msgNum << ";5;" << file << std::endl;
@@ -391,7 +409,7 @@ void IM_Client::startFileDownload(void* d)	{
 	if(DEBUG)	{
 		std::cout << "Sent " << bytes_sent << "bytes. " << std::endl;	
 		std::cout << "Message: " << message.c_str() << std::endl;
-	}		
+	}
 
 	//Depending on ack, proceed or not
 	//assume they ask for valid file.
@@ -408,5 +426,7 @@ void IM_Client::startFileDownload(void* d)	{
 		fout << chunk;
 	}while(chunk.length() >= chunkSize);
 	fout.close();
+	*/
 }
+
 
