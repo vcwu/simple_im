@@ -22,14 +22,6 @@
 class IM_Client {
 	private: 
 	
-		//used for file transfer.
-		//not sure of more elegant way to do this T.T
-		typedef struct {
-			int num;	//msgNum for file transfer
-			std::string fileName;
-			MessageQs* mq;
-		} temp;
-
 		std::string name;
 		SOCKET s;
 		int msgNum;
@@ -265,6 +257,10 @@ void IM_Client::downloadFile()	{
 	std::cout << "What file would you like to download? " << std::endl;
 	std::getline(std::cin, name );
 
+	//testing
+	struct easy d;
+	d.cows = 99;
+
 	struct temp data; 
 	data.num = msgNum;
 	data.mq = listener;
@@ -285,8 +281,8 @@ void IM_Client::downloadFile()	{
 	*/
 	
 	//Begin downloading thread...
-	_beginthread(startFileDownload, 0, (void* ) &data);	
-
+	//_beginthread(startFileDownload, 0, &data);	
+	_beginthread(startFileDownload, 0, (void*)this);	
 	//Done with 	
 }
 
@@ -378,11 +374,19 @@ void IM_Client::startFileDownload(void* d)	{
 
 	if(DEBUG)
 		std::cout << "FROM:THREAD Starting file download " << std::endl;
-
+	IM_Client* c = (IM_Client*)d;
+	std::cout << c-> s<< std::endl;
+/*
+	struct easy a = *( (struct easy*) d);
+	std::cout << "FROM FILE DOWNLOAD THREADi" << std::endl;
+	std::cout << "cows: " << a.cows;
 	
-	struct temp t = *((struct temp*)d);
+	struct temp t = *( (struct temp*)d );
+
+//	struct temp* a = ((struct temp*)d);
+//	temp t = *a;
 	MessageQs* listener = t.mq;
-	SOCKET s = listener->s;
+	u_int s = listener->s;
 
 	int msgNum = t.num;
 	std::string file = t.fileName;
@@ -395,7 +399,7 @@ void IM_Client::startFileDownload(void* d)	{
 		std::cout << "file name: " << file << std::endl;
 		std::cout << "DONE" << std::endl;
 	}	
-	/*	
+		
 	//Construct socket message.
 	std::stringstream ss;
 	ss << msgNum << ";5;" << file << std::endl;
