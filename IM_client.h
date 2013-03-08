@@ -27,6 +27,9 @@ class IM_Client {
 		int msgNum;
 		MessageQs* listener;
 		
+		//stuff to deal with file transfer
+		std::string fileName;	//what file are they downloading
+		int msgNumFileTransfer;	
 		//Waits for ack from server.
 		void waitForAck();
 		void connectsock(const char* serverName, const char* portNum);
@@ -76,6 +79,8 @@ IM_Client::IM_Client(const char* serverName, const char* portNum)	{
 	name = "NO NAME";	
 	listener = new MessageQs(s);	
 	listener->TESTER = "MY COPY";	
+	msgNumFileTransfer = 0;
+	fileName = "empty";
 }
 
 IM_Client::~IM_Client()	{
@@ -256,34 +261,13 @@ void IM_Client::downloadFile()	{
 	std::string name;
 	std::cout << "What file would you like to download? " << std::endl;
 	std::getline(std::cin, name );
-
-	//testing
-	struct easy d;
-	d.cows = 99;
-
-	struct temp data; 
-	data.num = msgNum;
-	data.mq = listener;
-	data.fileName= name;
-	
-	if(DEBUG)	{
-		std::cout << "from Client, then struct" << std::endl;
-		std::cout << "socket num: " << s << "; " << data.mq->s << std::endl;
-		std::cout << "msgnum : " << msgNum << "; " << data.num << std::endl;
-		std::cout << "file name: " << name << "; " << data.fileName  << std::endl;
-		std::cout << "DONE" << std::endl;
-	}	
-//	struct temp *t = &data;
-	/*
-	int* temp = new int[2];
-	temp[0] = s;
-	temp[1] = msgNum;
-	*/
-	
+	fileName = name;
+	msgNumFileTransfer = msgNum;	//prevent race condition	
 	//Begin downloading thread...
-	//_beginthread(startFileDownload, 0, &data);	
 	_beginthread(startFileDownload, 0, (void*)this);	
-	//Done with 	
+	//Done with 
+	//race condition...!!!! 
+	msgNum++;	
 }
 
 void IM_Client::logOut()	{
@@ -376,36 +360,19 @@ void IM_Client::startFileDownload(void* d)	{
 		std::cout << "FROM:THREAD Starting file download " << std::endl;
 	IM_Client* c = (IM_Client*)d;
 	std::cout << c-> s<< std::endl;
-/*
-	struct easy a = *( (struct easy*) d);
-	std::cout << "FROM FILE DOWNLOAD THREADi" << std::endl;
-	std::cout << "cows: " << a.cows;
+
+	int currentMsgNum = c->msgNumFileTransfer;	//race condition? guaranteeing that we get right msg num, before we increment in main thread 
+	MessageQs* l = c->listener;
+	SOCKET sock = c->s;
+	std::string file = c->fileName;
 	
-	struct temp t = *( (struct temp*)d );
-
-//	struct temp* a = ((struct temp*)d);
-//	temp t = *a;
-	MessageQs* listener = t.mq;
-	u_int s = listener->s;
-
-	int msgNum = t.num;
-	std::string file = t.fileName;
-	
-
-	if(DEBUG)	{
-		std::cout << "from file download thread" << std::endl;
-		std::cout << "socket num: " << s << std::endl;
-		std::cout << "msgnum : " << msgNum << std::endl;
-		std::cout << "file name: " << file << std::endl;
-		std::cout << "DONE" << std::endl;
-	}	
 		
 	//Construct socket message.
 	std::stringstream ss;
-	ss << msgNum << ";5;" << file << std::endl;
+	ss << currentMsgNum << ";5;" << file << std::endl;
 	std::string message = ss.str();
 
-	int bytes_sent = send(s, message.c_str(), strlen(message.c_str() ), 0);
+	int bytes_sent = send(sock, message.c_str(), strlen(message.c_str() ), 0);
 	if(bytes_sent == SOCKET_ERROR)	{
 		std::cerr << "error in sending file request" << std::endl;
 	}
@@ -417,7 +384,7 @@ void IM_Client::startFileDownload(void* d)	{
 
 	//Depending on ack, proceed or not
 	//assume they ask for valid file.
-	
+/*	
 	int block = 2;	//request next block of data
 	int chunkSize = 512;	//full chunk size, used to determine last chunk
 	
