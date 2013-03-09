@@ -3,6 +3,10 @@
  *
  * Spring 2013
  * Victoria Wu
+ *
+ * DEBUG
+ * -after getting file list msg, it stays after error messages. overwriting messages?
+ *
  */
 
 #include <cstdlib>	//rand, srand
@@ -261,10 +265,28 @@ void IM_Client::downloadFile()	{
 	std::string name;
 	std::cout << "What file would you like to download? " << std::endl;
 	std::getline(std::cin, name );
-	fileName = name;
-	msgNumFileTransfer = msgNum;	//prevent race condition	
-	//Begin downloading thread...
-	_beginthread(startFileDownload, 0, (void*)this);	
+
+//-------	
+	if(DEBUG)
+		std::cout << "FROM:THREAD Starting file download " << std::endl;
+	
+		
+	//Construct socket message.
+	std::stringstream ss;
+	ss << msgNum << ";5;" << name; 
+	std::string message = ss.str();
+
+	int bytes_sent = send(s, message.c_str(), strlen(message.c_str() ), 0);
+	if(bytes_sent == SOCKET_ERROR)	{
+		std::cerr << "error in sending file request" << std::endl;
+	}
+	
+	if(DEBUG)	{
+		std::cout << "Sent " << bytes_sent << "bytes. " << std::endl;	
+		std::cout << "Message: " << message.c_str() << std::endl;
+	}
+//Begin downloading thread...
+//	_beginthread(startFileDownload, 0, (void*)this);	
 	//Done with 
 	//race condition...!!!! 
 	msgNum++;	
