@@ -327,6 +327,7 @@ void IM_Client::startListening(void* l)	{
 
 			//SOMETHING DEALING WITH A FILE
 			if(atoi(messageNum.c_str()) == listener->getCurrentFileMsgNum())	{
+				printf("L-> Found FILE MSG, putting in ack" );
 				listener->putFileChunk(meat);
 			}
 			else if(code.compare("ack") ==0 || code.compare("Error")==0)	{
@@ -451,6 +452,8 @@ void IM_Client::startFileDownload(void* d)	{
 	fout.open(file, std::ios::out);
 	fout << fileContents;
 	fout.close();
+	//Reset file msgnumber.
+	mq->setCurrentFileMsgNum(-1);
 	mq->putNotification(notification);
 }
 
