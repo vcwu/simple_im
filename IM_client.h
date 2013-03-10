@@ -15,6 +15,9 @@
 #include <winsock.h>
 #include <fstream>	//ftp
 #include <sstream>
+#include <iostream>	//writing to file
+#include <iostream>	//writing to file
+#include <iomanip>	//setw, setfill for padded zeroes
 #include <queue>
 #include "MessageQs.h"	//queues to handle messages
 #pragma comment(lib, "wsock32.lib")	//link winsock lib
@@ -31,12 +34,15 @@ class IM_Client {
 		int msgNum;
 		MessageQs* listener;
 		
-		//stuff to deal with file transfer
+		//Dealing with file transfer
 		std::string fileName;	//what file are they downloading
 		int msgNumFileTransfer;	
+		
 		//Waits for ack from server.
 		void waitForAck();
 		void connectsock(const char* serverName, const char* portNum);
+
+		//Threading functions.
 		static void startListening(void* listener);	//monitor for messages from server
 		static void startFileDownload(void* data);			
 	
@@ -49,20 +55,15 @@ class IM_Client {
 		
 		void menuDisplay();
 		void signIn();
-		void logOut();
 		void checkMessages();
 		void sendMessage();
 		void getFileNames();
 		void downloadFile();
+		void logOut();
 		void shutdown();		
 };
 
 
-void IM_Client::waitForAck()	{
-	if(!listener->waitForAck(msgNum))	{
-		std::cout << "ACK msg# incorrect!! " << std::endl;
-	}
-}
 
 IM_Client::IM_Client(const char* serverName, const char* portNum)	{
 
@@ -77,14 +78,13 @@ IM_Client::IM_Client(const char* serverName, const char* portNum)	{
 	connectsock(serverName, portNum);
 
 	//Init other variables.
-	srand(time(NULL));
+	name = "NO NAME";	
+	srand(time(NULL));	//seed random.
 	msgNum = rand() % 1000 + 10000;
 
-	name = "NO NAME";	
 	listener = new MessageQs(s);	
-	listener->TESTER = "MY COPY";	
-	msgNumFileTransfer = 0;
 	fileName = "empty";
+	msgNumFileTransfer = 0;
 }
 
 IM_Client::~IM_Client()	{
@@ -170,9 +170,9 @@ void IM_Client::signIn()	{
 	std::getline(std::cin, name);
 
 	std::cout << "Signing in as " << name << std::endl;
-	
 	std::cout << "MSG NUM : " << msgNum << std::endl;
 
+	//Sending sign on message
 	std::stringstream ss;
 	ss << msgNum << ";1;" << name;
 	std::string message = ss.str();
@@ -187,8 +187,8 @@ void IM_Client::signIn()	{
 		std::cout << "Message: " << message.c_str() << std::endl;
 	}
 	msgNum++;
+	
 	//display confirm from servr
-		
 	const int bufferLength = 256;
 	char recvbuf[bufferLength];
 	if(recv(s, recvbuf, bufferLength, 0) == SOCKET_ERROR )	{
@@ -199,7 +199,6 @@ void IM_Client::signIn()	{
 	}
 
 	//Start thread to monitor connection to server.
-
 	_beginthread(startListening, 0, (void*) listener);	
 }
 void IM_Client::sendMessage()	{
@@ -266,32 +265,13 @@ void IM_Client::downloadFile()	{
 	std::cout << "What file would you like to download? " << std::endl;
 	std::getline(std::cin, name );
 
-//-------	
-	if(DEBUG)
-		std::cout << "FROM:THREAD Starting file download " << std::endl;
-	
-		
-	//Construct socket message.
-	std::stringstream ss;
-	ss << msgNum << ";5;" << name; 
-	std::string message = ss.str();
-
-	int bytes_sent = send(s, message.c_str(), strlen(message.c_str() ), 0);
-	if(bytes_sent == SOCKET_ERROR)	{
-		std::cerr << "error in sending file request" << std::endl;
-	}
-	
-	if(DEBUG)	{
-		std::cout << "Sent " << bytes_sent << "bytes. " << std::endl;	
-		std::cout << "Message: " << message.c_str() << std::endl;
-	}
-//Begin downloading thread...
-//	_beginthread(startFileDownload, 0, (void*)this);	
-	//Done with 
+	fileName = name;
+	msgNumFileTransfer = msgNum;
+	//Begin downloading thread...
+	_beginthread(startFileDownload, 0, (void*)this);	 
 	//race condition...!!!! 
 	msgNum++;	
 }
-
 void IM_Client::logOut()	{
 	std::cout << "Logging off... " << std::endl;
 	
@@ -329,7 +309,7 @@ void IM_Client::startListening(void* l)	{
 	char recvbuf[bufferLength];
 	
 	while(true)	{
-		
+		memset(recvbuf, '\0', bufferLength);
 		if(recv(listener->s, recvbuf, bufferLength, 0 ) == SOCKET_ERROR)	{
 			//not really share what to do here.			
 
@@ -344,11 +324,12 @@ void IM_Client::startListening(void* l)	{
 			std::getline(ss, messageNum, ';');
 			std::getline(ss, remainder, ';');
 	
-/*
-			if(code.compare("ack") ==0 || || code.compare("Error")==0)	{
-				//if(atoi(messageNum.c_str()) != listener->msgNum){
-				//	printf("Wrong ack num");
-				//}
+
+			//SOMETHING DEALING WITH A FILE
+			if(atoi(messageNum.c_str()) == listener->getCurrentFileMsgNum())	{
+				listener->putFileChunk(meat);
+			}
+			else if(code.compare("ack") ==0 || code.compare("Error")==0)	{
 				printf("L-> putting in ack");
 				listener->putAck(meat);		
 			}
@@ -356,18 +337,12 @@ void IM_Client::startListening(void* l)	{
 				printf("L-> putting in from");
 				listener->putMessage(meat);
 			}
-			else if (code.compare("fil") ==0)	{
-				printf("L->putting in files");
-				listener->putFileChunk(meat);
-			}
 			//notifications from server
 			else	{
 				std::cout << "putting notification " << std:: endl << meat;
-
 				listener->putNotification(meat);
 			}
-*/
-			listener->putAck(meat);
+
 //			printf( "-> %s", recvbuf); 
 //			std::cout << "-> " << std::endl << std::endl;
 		}
@@ -383,15 +358,18 @@ void IM_Client::startFileDownload(void* d)	{
 	IM_Client* c = (IM_Client*)d;
 	std::cout << c-> s<< std::endl;
 
+	//Get appropriate data.
 	int currentMsgNum = c->msgNumFileTransfer;	//race condition? guaranteeing that we get right msg num, before we increment in main thread 
-	MessageQs* l = c->listener;
+	MessageQs* mq = c->listener;
 	SOCKET sock = c->s;
 	std::string file = c->fileName;
 	
-		
+	
+	//Notify message queue to be on the lookout for these file messages, route to right queue.
+	mq->setCurrentFileMsgNum(currentMsgNum);	
 	//Construct socket message.
 	std::stringstream ss;
-	ss << currentMsgNum << ";5;" << file << std::endl;
+	ss << currentMsgNum << ";5;" << file; 
 	std::string message = ss.str();
 
 	int bytes_sent = send(sock, message.c_str(), strlen(message.c_str() ), 0);
@@ -404,22 +382,76 @@ void IM_Client::startFileDownload(void* d)	{
 		std::cout << "Message: " << message.c_str() << std::endl;
 	}
 
-	//Depending on ack, proceed or not
-	//assume they ask for valid file.
-/*	
-	int block = 2;	//request next block of data
-	int chunkSize = 512;	//full chunk size, used to determine last chunk
+	//File transfer time!!	
+	int blockCount = 1;		//current block
+	int chunkSize = 528;	//full chunk size, used to determine which is last chunk
+	std::string chunk;
+	std::string fileContents;	//wait until file completely gotten before writing to file
+	bool prevChunkOK = true;
+	std::string notification;
+	std::string errPrefix("Error");	
+	do	{
+		//Get message from server using msgnum.
+		chunk = mq->findFileMessage(currentMsgNum);
+		if(chunk.compare("") == 0) 	{	//could not find ack
+			std::cout << "Couldn't find file msg ack." << std::endl;
+//			prevChunkOK = false;	
+			//Resend request for chunk. NOPE. Can't do. Gets ngry and expects next block request. 
+			//Need to use cond variable to WAIT for block from server...
+		}	
+		else	{
+			
+			//If there was an ack message, for an ERROR
+			if(chunk.compare(0, errPrefix.size(), errPrefix)==0)	{
+				std::cout << "ERROR in file transfer!" << std::endl;
+				prevChunkOK = false;
+				notification += chunk;
+			}
+			else	{
+				std::cout << "FOUND file ack for block " << blockCount << std::endl;
+				//be sure to STRIP HEADER!!!! 
+				fileContents += chunk;
+				blockCount++;
+				//request next chunk
+				std::stringstream ss;
+				ss << currentMsgNum << ";6;" << std::setw(5) <<std::setfill('0') << blockCount;
+				std::string message = ss.str();
+				
+				int bytes_sent = send(sock, message.c_str(), strlen(message.c_str() ), 0);
+				if(bytes_sent == SOCKET_ERROR)	{
+					std::cerr << "error in sending sign in msg" << std::endl;	
+				}
+
+				if(DEBUG)	{
+					std::cout << "Sent " << bytes_sent << "bytes. " << std::endl;	
+					std::cout << "Message: " << message.c_str() << std::endl;
+				}
+			}
+		}
+	}
+	//while message is OK and file is not completely here yet.
+	while (prevChunkOK && chunk.length() >= chunkSize);
+
+	if(DEBUG)	{
+		std::cout << "Jumped out of file transfer loop." << std::endl;
+		std::cout << "PrevChunk status: " << prevChunkOK << std::endl;
+		std::cout << "Chunk length == " << chunk.length() << std::endl;
+
+	}
+	if(!prevChunkOK)	{
+		//put appropriate notification in queue, will be printed out by main thread
+		notification += "Ack message not received, or error in downloading file.";	
+	}	
+	else	{
+		notification = "File successfully downloaded.";
 	
+	}	
 	std::fstream fout;
-	fout.open(file, std::fstream::out);
-	std::string chunk;	
-	do 
-	{
-		chunk = listener->getFileChunk();	
-		fout << chunk;
-	}while(chunk.length() >= chunkSize);
+	std::cout << "Writing contents to file. " << std::endl;
+	fout.open(file, std::ios::out);
+	fout << fileContents;
 	fout.close();
-	*/
+	mq->putNotification(notification);
 }
 
 
