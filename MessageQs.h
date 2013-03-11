@@ -52,11 +52,13 @@ MessageQs::~MessageQs()	{}
 
 void MessageQs::displayAcks()	{
 	EnterCriticalSection(&critSec);
+	if(acks.empty())	{
+		std::cout << "No new acks."  <<std::endl;
+	}
 	while(!acks.empty())	{
 		std::cout << acks.front() << std::endl << std::endl;
 		acks.pop_front();
 	}
-	std::cout << "NO NEW ACKS" << std::endl;
 	LeaveCriticalSection(&critSec);
 }
 
@@ -68,7 +70,7 @@ void MessageQs::displayNotifications()	{
 		std::cout << notifications.front() << std::endl;
 		notifications.pop_front();
 	}
-	std::cout << "NO NEW NOTIFICATIONS" << std::endl;
+	//std::cout << "NO NEW NOTIFICATIONS" << std::endl;
 	LeaveCriticalSection(&critSec);
 }
 
@@ -99,16 +101,16 @@ bool MessageQs::findMessage(int msgNum)	{
  */
 std::string MessageQs::findFileMessage(int msgNum)	{
 
-	std::cout << "Finding file message. " << msgNum << std::endl;
-	std::cout << "Enter crit section " << std::endl;
+	if(DEBUG)
+		std::cout << "Enter crit section " << std::endl;
 	EnterCriticalSection(&critSec);
 	
 	//Wait until there is actually an appropriate file message with msgNum
-	while(!fileMsgPresent)	{
-		std::cout << "no file msg available, going to sleep " <<std::endl;
-		//make this NOT INFINITE
+	int FIFTEEN_SECONDS = 15000;	//time in ms
+	if(!fileMsgPresent)	{
+		//std::cout << "no file msg available, going to sleep " <<std::endl;
 		//If it waits for too long, just scrap it and say error in downloading file!!
-		SleepConditionVariableCS(&fileMsgAvailable, &critSec, 500);
+		SleepConditionVariableCS(&fileMsgAvailable, &critSec, FIFTEEN_SECONDS);
 	}
 
 	std::string message;	
@@ -120,7 +122,7 @@ std::string MessageQs::findFileMessage(int msgNum)	{
 	}
 	else	{
 		message = "";
-		std::cout << "WOKE UP! There's a msg for file , msgnum "<< msgNum << std::endl;
+		//std::cout << "WOKE UP! There's a msg for file , msgnum "<< msgNum << std::endl;
 		std::deque<std::string>::iterator it;
 		for(it = fileAcks.begin(); it!= fileAcks.end(); )	{
 			std::stringstream ss;
@@ -128,7 +130,7 @@ std::string MessageQs::findFileMessage(int msgNum)	{
 			std::string s = *it;
 			//If you find msg num, return its msg.
 			if(s.find(ss.str()) != std::string::npos)	{
-				std::cout << "FOUND ACK!! " << std::endl;
+			//	std::cout << "FOUND ACK!! " << std::endl;
 				message = s;	
 				it = fileAcks.erase(it);		
 			}
@@ -139,9 +141,8 @@ std::string MessageQs::findFileMessage(int msgNum)	{
 	}
 	//Be sure to set fileMsgPresent to FALSE.
 	fileMsgPresent = false;	
-	//Be sure to REMOVE the messages with the ack.
 	LeaveCriticalSection(&critSec);
-	std::cout << "ACKOK is done." <<std::endl;
+//	std::cout << "ACKOK is done." <<std::endl;
 	
 	return message;
 }
@@ -176,16 +177,16 @@ void MessageQs::setCurrentFileMsgNum(int msgNum)	{
 	fileMsgNumber = msgNum;
 }
 void MessageQs::putFileChunk(std::string m)	{
-	std::cout << "putFileChunk enter crit section! " <<std::endl;
+	//std::cout << "putFileChunk enter crit section! " <<std::endl;
 	EnterCriticalSection(&critSec);
 	fileMsgPresent = true;
 	fileAcks.push_back(m);
-	std::cout << "Set file msgPresent to " << fileMsgPresent << std::endl;
-	std::cout << "Pushed back fileAcks msg : " << m << std::endl;
+	//std::cout << "Set file msgPresent to " << fileMsgPresent << std::endl;
+	//std::cout << "Pushed back fileAcks msg : " << m << std::endl;
 	LeaveCriticalSection(&critSec);
-	std::cout << "Leave crit section, wake up cond variable" << std::endl;
+	//std::cout << "Leave crit section, wake up cond variable" << std::endl;
 	WakeConditionVariable(&fileMsgAvailable);
-	std::cout << "DONE WITH PUT FILE CHUNK" << std::endl;
+	//std::cout << "DONE WITH PUT FILE CHUNK" << std::endl;
 }
 void MessageQs::getMessages()	{
 	EnterCriticalSection(&critSec);
