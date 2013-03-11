@@ -4,9 +4,6 @@
  * Spring 2013
  * Victoria Wu
  *
- * DEBUG
- * -after getting file list msg, it stays after error messages. overwriting messages?
- *
  */
 
 #include <cstdlib>	//rand, srand
@@ -17,35 +14,30 @@
 #include <fstream>	//ftp
 #include <sstream>
 #include <iostream>	//writing to file
-#include <iostream>	//writing to file
 #include <iomanip>	//setw, setfill for padded zeroes
-#include <queue>
 #include "MessageQs.h"	//queues to handle messages
+
 #pragma comment(lib, "wsock32.lib")	//link winsock lib
 #pragma comment(lib, "libcmt.lib")	//for process.h
 
 
-
-
 class IM_Client {
 	private: 
-	
 		std::string name;
 		SOCKET s;
 		int msgNum;
 		MessageQs* listener;
 		
-		//Dealing with file transfer
+		//Dealing with file transfer 
 		std::string fileName;	//what file are they downloading
 		int msgNumFileTransfer;	
 		
-		//Waits for ack from server.
-		void waitForAck();
+		//Connecting to a Socket.
 		void connectsock(const char* serverName, const char* portNum);
 
 		//Threading functions.
 		static void startListening(void* listener);	//monitor for messages from server
-		static void startFileDownload(void* data);			
+		static void startFileDownload(void* data);	//deals with file download	
 	
 	public:
 		IM_Client(const char* serverName, const char* portNum);
@@ -165,6 +157,11 @@ void IM_Client::menuDisplay()	{
 	std::cout << std::endl;
 }
 
+/*
+ * signIn
+ * Asks for user name and signs user on to server.
+ * Also starts up listener thread to monitor notifications.
+ */
 void IM_Client::signIn()	{	
 	
 	std::cout << "What is your IM name? " << std::endl;
@@ -202,7 +199,12 @@ void IM_Client::signIn()	{
 	//Start thread to monitor connection to server.
 	_beginthread(startListening, 0, (void*) listener);	
 }
+/*
+ * sendMessage
+ * Send a message to buddy.
+ */
 void IM_Client::sendMessage()	{
+
 	//Get user input.
 	std::string buddy;
 	std::string message;
@@ -231,13 +233,19 @@ void IM_Client::sendMessage()	{
 
 }
 
+/*
+ * checkMessages
+ * 
+ */
 void IM_Client::checkMessages()	{
 	std::cout << "CHECKING MESSAGES" << std::endl;
+	listener->displayAcks();
 	listener->getMessages();
 }
 
 /*
  * getFileNames
+ * Returns a list of files available for download.
  */
 void IM_Client::getFileNames()	{
 
@@ -260,19 +268,31 @@ void IM_Client::getFileNames()	{
 	msgNum++;
 
 }
+
+/*
+ * downloadFile
+ * Asks for fileName user wants to download, then starts download.
+ */
 void IM_Client::downloadFile()	{
 	//get filename
 	std::string name;
 	std::cout << "What file would you like to download? " << std::endl;
 	std::getline(std::cin, name );
 
+	//Keep track of which filename, and which msgNum is used.
 	fileName = name;
 	msgNumFileTransfer = msgNum;
+
 	//Begin downloading thread...
 	_beginthread(startFileDownload, 0, (void*)this);	 
-	//race condition...!!!! 
+	
 	msgNum++;	
 }
+
+/*
+ * logOut
+ * Logs user off.
+ */
 void IM_Client::logOut()	{
 	std::cout << "Logging off... " << std::endl;
 	
@@ -325,50 +345,51 @@ void IM_Client::startListening(void* l)	{
 			std::getline(ss, messageNum, ';');
 			std::getline(ss, remainder, ';');
 	
-
-			//SOMETHING DEALING WITH A FILE
+			
+			//If it's msg related to a file:
 			if(atoi(messageNum.c_str()) == listener->getCurrentFileMsgNum())	{
-				printf("L-> Found FILE MSG, putting in ack" );
+			//	printf("L-> Found FILE MSG, putting in ack" );
 				listener->putFileChunk(meat);
 			}
+			//Any acks from server that are responses to my messages
 			else if(code.compare("ack") ==0 || code.compare("Error")==0)	{
-				printf("L-> putting in ack");
+			//	printf("L-> putting in ack");
 				listener->putAck(meat);		
 			}
+			//Messages from other users
 			else if (code.find("From") ==0 )	{
-				printf("L-> putting in from");
+			//	printf("L-> putting in from");
 				listener->putMessage(meat);
 			}
-			//notifications from server
+			//notifications from server, not requested by client
 			else	{
-				std::cout << "putting notification " << std:: endl << meat;
+			//	std::cout << "putting notification " << std:: endl << meat;
 				listener->putNotification(meat);
 			}
-
-//			printf( "-> %s", recvbuf); 
-//			std::cout << "-> " << std::endl << std::endl;
-		}
-	
-	}
+		}	//Endif  - processing this message.
+	}	//End while -Listen for next message.
 
 }
 
+/*
+ * startFileDownload
+ * Thread function , takes care of downloading file.
+ */
 void IM_Client::startFileDownload(void* d)	{
 
-	if(DEBUG)
-		std::cout << "FROM:THREAD Starting file download " << std::endl;
+	
+	std::cout << "Starting file download... " << std::endl;
 	IM_Client* c = (IM_Client*)d;
-	std::cout << c-> s<< std::endl;
 
 	//Get appropriate data.
-	int currentMsgNum = c->msgNumFileTransfer;	//race condition? guaranteeing that we get right msg num, before we increment in main thread 
+	int currentMsgNum = c->msgNumFileTransfer;	
 	MessageQs* mq = c->listener;
 	SOCKET sock = c->s;
 	std::string file = c->fileName;
 	
-	
 	//Notify message queue to be on the lookout for these file messages, route to right queue.
 	mq->setCurrentFileMsgNum(currentMsgNum);	
+
 	//Construct socket message.
 	std::stringstream ss;
 	ss << currentMsgNum << ";5;" << file; 
@@ -386,7 +407,7 @@ void IM_Client::startFileDownload(void* d)	{
 
 	//File transfer time!!	
 	int blockCount = 1;		//current block
-	int chunkSize = 512;	//full chunk size after stripping header, used to determine which is last chunk
+	int chunkSize = 512;		//full chunk size after stripping header, used to determine last chunk
 	std::string chunk;
 	std::string fileContents;	//wait until file completely gotten before writing to file
 	bool prevChunkOK = true;
@@ -396,27 +417,31 @@ void IM_Client::startFileDownload(void* d)	{
 		//Get message from server using msgnum.
 		chunk = mq->findFileMessage(currentMsgNum);
 		if(chunk.compare("") == 0) 	{	//could not find ack
-			std::cout << "Couldn't find file msg ack." << std::endl;
+			//std::cout << "Couldn't find file msg ack." << std::endl;
 			prevChunkOK = false;	
-			notification = "Error in file transfer. ";
-			//Resend request for chunk. NOPE. Can't do. Gets ngry and expects next block request. 
-			//Need to use cond variable to WAIT for block from server...
+			notification = "Could not find next block message. Error in file transfer. ";
 		}	
 		else	{
 			
-			//If there was an ack message, for an ERROR
+			//Error message!
 			if(chunk.compare(0, errPrefix.size(), errPrefix)==0)	{
-				std::cout << "ERROR in file transfer!" << std::endl;
+			//	std::cout << "ERROR in file transfer!" << std::endl;
 				prevChunkOK = false;
 				notification = chunk;
 			}
+			//File chunk.
 			else	{
-				std::cout << "FOUND file ack for block " << blockCount << std::endl;
-				//be sure to STRIP HEADER!!!!
+				if(DEBUG)
+					std::cout << "FOUND file ack for block " << blockCount << std::endl;
+				
+				//Stripping header
 				int HEADER_LENGTH = 16; 
 				chunk = chunk.substr(HEADER_LENGTH, std::string::npos);
+				
+				//Dealing with chunk of data
 				fileContents += chunk;
 				blockCount++;
+
 				//request next chunk
 				std::stringstream ss;
 				ss << currentMsgNum << ";6;" << std::setw(5) <<std::setfill('0') << blockCount;
@@ -443,17 +468,19 @@ void IM_Client::startFileDownload(void* d)	{
 		std::cout << "Chunk length == " << chunk.length() << std::endl;
 
 	}
+
 	if(prevChunkOK)	{
 		notification = "File successfully downloaded.";
-	}	
-	std::fstream fout;
-	std::cout << "Writing contents to file. " << std::endl;
-	fout.open(file, std::ios::out);
-	fout << fileContents;
-	fout.close();
+		//Writing to file.	
+		std::fstream fout;
+		fout.open(file, std::ios::out);
+		fout << fileContents;
+		fout.close();
+	}
+	mq->putNotification(notification);
+
 	//Reset file msgnumber.
 	mq->setCurrentFileMsgNum(-1);
-	mq->putNotification(notification);
 }
 
 
