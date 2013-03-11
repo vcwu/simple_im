@@ -13,6 +13,7 @@
 #include <process.h>	//multi threading
 #include <time.h>	//srand time
 #include <winsock.h>
+#include <string>	//substr
 #include <fstream>	//ftp
 #include <sstream>
 #include <iostream>	//writing to file
@@ -385,7 +386,7 @@ void IM_Client::startFileDownload(void* d)	{
 
 	//File transfer time!!	
 	int blockCount = 1;		//current block
-	int chunkSize = 528;	//full chunk size, used to determine which is last chunk
+	int chunkSize = 512;	//full chunk size after stripping header, used to determine which is last chunk
 	std::string chunk;
 	std::string fileContents;	//wait until file completely gotten before writing to file
 	bool prevChunkOK = true;
@@ -396,7 +397,8 @@ void IM_Client::startFileDownload(void* d)	{
 		chunk = mq->findFileMessage(currentMsgNum);
 		if(chunk.compare("") == 0) 	{	//could not find ack
 			std::cout << "Couldn't find file msg ack." << std::endl;
-//			prevChunkOK = false;	
+			prevChunkOK = false;	
+			notification = "Error in file transfer. ";
 			//Resend request for chunk. NOPE. Can't do. Gets ngry and expects next block request. 
 			//Need to use cond variable to WAIT for block from server...
 		}	
@@ -406,11 +408,13 @@ void IM_Client::startFileDownload(void* d)	{
 			if(chunk.compare(0, errPrefix.size(), errPrefix)==0)	{
 				std::cout << "ERROR in file transfer!" << std::endl;
 				prevChunkOK = false;
-				notification += chunk;
+				notification = chunk;
 			}
 			else	{
 				std::cout << "FOUND file ack for block " << blockCount << std::endl;
-				//be sure to STRIP HEADER!!!! 
+				//be sure to STRIP HEADER!!!!
+				int HEADER_LENGTH = 16; 
+				chunk = chunk.substr(HEADER_LENGTH, std::string::npos);
 				fileContents += chunk;
 				blockCount++;
 				//request next chunk
@@ -439,13 +443,8 @@ void IM_Client::startFileDownload(void* d)	{
 		std::cout << "Chunk length == " << chunk.length() << std::endl;
 
 	}
-	if(!prevChunkOK)	{
-		//put appropriate notification in queue, will be printed out by main thread
-		notification += "Ack message not received, or error in downloading file.";	
-	}	
-	else	{
+	if(prevChunkOK)	{
 		notification = "File successfully downloaded.";
-	
 	}	
 	std::fstream fout;
 	std::cout << "Writing contents to file. " << std::endl;
