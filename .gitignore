@@ -5,6 +5,7 @@
 #swap files
 *.h~
 *.cpp~
-
+*.swp
+*.swo
 #misc
 *.txt
