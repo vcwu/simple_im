@@ -3,6 +3,10 @@
  *
  * Spring 2013
  * VIctoria Wu
+ *
+ *This class allows communication between the listener, main, and file download threads.
+ * The listener thread recvs() and puts messages into the appropriate queue. 
+ * The file download thread and main thread send messages and get messages from this class.
  */
 
 #include <Windows.h>	//sleep fn
@@ -13,9 +17,12 @@
 class MessageQs	{
 	private:
 		CRITICAL_SECTION critSec;	
-		CONDITION_VARIABLE fileMsgAvailable;
-		volatile bool fileMsgPresent;
+		
+		//FILE TRANFER STUFF
+		CONDITION_VARIABLE fileMsgAvailable;	
+		volatile bool fileMsgPresent;	
 		int fileMsgNumber;
+		
 		std::deque<std::string> notifications;	//Stuff client didn't request.
 		std::deque<std::string> messages;	//Messages from other users.
 		std::deque<std::string> acks;		//Acks to stuff client requested.
@@ -25,7 +32,6 @@ class MessageQs	{
 		~MessageQs();
 		
 		SOCKET s;
-		std::string TESTER;
 		void displayNotifications();	//prints out notifications.
 
 		void displayAcks();		//TESTING
@@ -44,7 +50,6 @@ MessageQs::MessageQs(SOCKET in)	{
 	fileMsgNumber= -1;
 	fileMsgPresent = false;
 	s = in;
-	TESTER = "HELLO";
 	InitializeConditionVariable(&fileMsgAvailable);
 	InitializeCriticalSection(&critSec);
 }

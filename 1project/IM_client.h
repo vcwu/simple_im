@@ -2,8 +2,10 @@
  * IM Client
  *
  * Spring 2013
+ * CS423
  * Victoria Wu
  *
+ * This class allows user to send messages and download files.
  */
 
 #include <cstdlib>	//rand, srand
@@ -228,7 +230,6 @@ void IM_Client::sendMessage()	{
 		std::cout << "SENT message: " << udpMessage << std::endl;
 	}
 
-	//waitForAck();
 	msgNum++;	
 
 }
@@ -264,7 +265,6 @@ void IM_Client::getFileNames()	{
 		std::cout << "Message: " << message.c_str() << std::endl;
 	}		
 
-	//waitForAck();	
 	msgNum++;
 
 }
@@ -312,7 +312,6 @@ void IM_Client::logOut()	{
 		std::cout << "Sent: " << bytes_sent << "bytes." <<std::endl;
 		std::cout << "Msg: " << message << std::endl;
 	}
-	//waitForAck();
 }
 
 /*

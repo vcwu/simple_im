@@ -1,16 +1,23 @@
+/*
+ * Project 1
+ * CS 423
+ * Victoria Wu
+ *
+ * IM Client + a bit of trivial FTP
+ */
 
-//TODO
-//closing thread at end
-//checking ack#s
-//implementing queues
 
 #ifndef DEBUG
-#define DEBUG 1
+#define DEBUG 0
 #endif
 
 #include <string>	//getline	
 #include <iostream>	//cerr
 #include "IM_Client.h"
+
+//Compiled using Visual Studio's command prompt
+#pragma comment(lib, "wsock32.lib")	//link winsock lib
+#pragma comment(lib, "libcmt.lib")	//for process.h
 
 
 int main(int argc, char **argv)	{
@@ -54,9 +61,12 @@ int main(int argc, char **argv)	{
 			case 'd': im.downloadFile(); break;
 			case 'q': userContinue = false;	 break;
 			default: std::cout << "Invalid input." << std::endl;
+				std::cout  << "->" << std::endl;
+				 std::cout << input << std:: endl << "->" << std::endl;
 		}
 	}		
 	
+
 
 	//Wrap up.
 	std::cout << "Goodbye!" << std::endl;
