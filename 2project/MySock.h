@@ -25,6 +25,8 @@ class MySock {
 		MySock(std::string transport);
 		~MySock();
 
+		unsigned short getLocalPort();
+
 		void startListening(int backlogSize);
 		void connectToHost(std::string serverName, std::string portNum);
 	

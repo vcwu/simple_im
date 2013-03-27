@@ -10,8 +10,29 @@
 #include <iostream>	//cerr, cout
 #include <string>
 #include "MySock.h"
+
+/*
+ * Return local port that socket is bound to.
+ */
+unsigned short MySock::getLocalPort()	{
+	if(port == 0)	{	
+		//Getting port number
+		struct sockaddr_in my_addr;
+		int size_my_addr = sizeof(struct sockaddr);
+		if(getsockname(s, (struct sockaddr*) &my_addr, &size_my_addr)
+				== SOCKET_ERROR)	{
+			std::cerr << "Could not retrieve port num for socket " << s <<
+				std::endl;
+		}
+		
+		port = my_addr.sin_port;
+	}
+	return port;
+}
+
 /*
  * Creates a socket of specified transport type.
+ * Does not bind to a port.
  * modified from Comer's Internetworking with TCP/IP Volume III, section 7.7
  */
 MySock::MySock(std::string transport)	{
@@ -19,6 +40,7 @@ MySock::MySock(std::string transport)	{
 	std::cout << "CEREATING SOCKET " << std::endl;
 	struct protoent *ppe;	// pointer to protocol information entr
 	int type;	//type of service
+	
 	//map protocol name to protocol number, define type
 	ppe = getprotobyname(transport.c_str());
 	if(strcmp(transport.c_str(), "udp") == 0 )	
@@ -33,9 +55,12 @@ MySock::MySock(std::string transport)	{
 		WSACleanup();
 		exit(1);
 	}
+	
+	//Clear out port field.
+	port = 0;
+
 	#ifdef DEBUG
 	std::cout << "Socket created successfully" << std::endl;
-
 	#endif
 }
 
@@ -44,6 +69,9 @@ MySock::MySock(std::string transport)	{
  */
 
 MySock::~MySock()	{
+	#ifdef DEBUG
+	std::cout << "Closing socket " << s << std::endl;
+	#endif
 	closesocket(s);
 }
 
@@ -93,27 +121,20 @@ void MySock::startListening(int backlogSize)	{
 	if( bind(s, (struct sockaddr*) &my_addr, sizeof(struct sockaddr)) == SOCKET_ERROR)	{
 		std::cerr << "Cannot bind socket " << s << "to port" << std::endl;
 	}
-	
-	//Getting port number
-	int size_my_addr = sizeof(struct sockaddr);
-	if(getsockname(s, (struct sockaddr*) &my_addr, &size_my_addr)
-			== SOCKET_ERROR)	{
-		std::cerr << "Could not retrieve port num for socket " << s <<
-			std::endl;
-	}
-	
-	port = my_addr.sin_port;
-#ifdef DEBUG
+
+	//Find out port number
+	unsigned short port = getLocalPort();	
+	#ifdef DEBUG
 	std::cout << "Bound socket " << s << " to port " << port << std::endl;
-#endif
+	#endif
 
 	//Start listening
 	if( listen(s, backlogSize) == SOCKET_ERROR)	{
 		std::cerr << "Cannot listen on socket " << s<< std::endl;
 	}
-#ifdef DEBUG
+	#ifdef DEBUG
 	std::cout << "Socket " << s << " is listening on port " << port << std::endl;
-#endif
+	#endif
 }
 
 
