@@ -30,7 +30,7 @@ class MySock {
 		void startListening(int backlogSize);
 		void connectToHost(std::string serverName, std::string portNum);
 	
-//		send(std::string message);
+		void sendMsg(std::string message);
 //		recv(std::string buffer);
 };
 

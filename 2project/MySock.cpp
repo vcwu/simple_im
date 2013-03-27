@@ -87,12 +87,13 @@ void MySock::connectToHost(std::string serverName, std::string portNum)	{
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons((u_short)atoi(portNum.c_str())); 
-	sin.sin_addr.s_addr = (inet_addr(serverName.c_str()));
+	sin.sin_addr.s_addr = htons(inet_addr(serverName.c_str()));
 
 	//Connect socket.
 	if(connect(s, (struct sockaddr*) &sin, sizeof(sin))==SOCKET_ERROR) 	
 	{
 		std::cerr << "can't connect to " << serverName << " " << portNum;
+		std::cout << "errno: " << WSAGetLastError();
 		WSACleanup();
 		exit(1);
 	}
@@ -138,7 +139,22 @@ void MySock::startListening(int backlogSize)	{
 }
 
 
-
+/*
+ * send
+ * Send given message to connected host. Should not be called on 
+ * listening sockets.
+ */
+void MySock::sendMsg(std::string message)	{
+	int bytes_sent = send(s, message.c_str(), strlen(message.c_str() ), 0);
+	if(bytes_sent == SOCKET_ERROR)	{
+		std::cerr << "Error in sending message\n" << message <<
+			std::endl;
+	}
+	
+	#ifdef DEBUG
+	printf("Successfully sent msg\n%s\n", message);
+	#endif
+}
 
 
 
