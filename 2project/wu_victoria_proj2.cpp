@@ -13,11 +13,13 @@
  
  */
 
+#define DEBUG
 
-
+#include <iostream>
 #include "MySock.h"
 
 #define WSVERS MAKEWORD(2,0)	//Win sock version.
+#define BACKLOG 5
 
 //Compiled using Visual Studio's command prompt
 #pragma comment(lib, "wsock32.lib")	//link winsock li
@@ -25,16 +27,20 @@
 
 int main()	{
 
-	//WSA STARTUP!!
+	//WSA STARTUP
 	WSADATA wsadata;
-//	MySock::startup(WSVERS, wsadata);	
+	if(WSAStartup(WSVERS, &wsadata) !=0 )	{
+		std::cerr << "WSA startup failed " << std::endl;
+		exit(1); 
+	}
+
 	//Start listening for peer requests.
-//	MySock peerListener("tcp");
+	MySock peerListener("tcp");
+	peerListener.startListening(BACKLOG);
 	//Start listening for server requests.
 	//Log on to server.
 	//GUI loop
 	
 
-	//WSA CLEANUP!!
-	//MySock::cleanup();
+	WSACleanup();
 }
