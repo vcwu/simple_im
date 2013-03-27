@@ -1,6 +1,7 @@
 /*
  * MySock 
  * spring 2013
+ * victoria wu
  * cs 423 - client server applications
  *
  * Class that wraps basic functionality for setting up, reading and writing to socket.
@@ -19,14 +20,14 @@ class MySock {
 	
 	private:
 		SOCKET s;
+		unsigned short port;	//for easier access
 	public:
 		MySock(std::string transport);
 		~MySock();
-	
+
+		void startListening(int backlogSize);
 		void connectToHost(std::string serverName, std::string portNum);
 	
-
-
 //		send(std::string message);
 //		recv(std::string buffer);
 };
