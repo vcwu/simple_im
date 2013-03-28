@@ -35,7 +35,7 @@ unsigned short MySock::getLocalPort()	{
  * Does not bind to a port.
  * modified from Comer's Internetworking with TCP/IP Volume III, section 7.7
  */
-MySock::MySock(std::string transport)	{
+MySock::MySock(std::string transport = "tcp")	{
 
 	std::cout << "CEREATING SOCKET " << std::endl;
 	struct protoent *ppe;	// pointer to protocol information entr

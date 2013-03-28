@@ -9,8 +9,8 @@
  */
 
 
-#ifndef MY_SOCK
-#define MY_SOCK
+#ifndef MY_SOCK_H
+#define MY_SOCK_H
 
 #include <winsock.h>
 #include <string>
@@ -22,7 +22,7 @@ class MySock {
 		SOCKET s;
 		unsigned short port;	//for easier access
 	public:
-		MySock(std::string transport);
+		MySock(std::string transport);	//defaults to TCP
 		~MySock();
 
 		unsigned short getLocalPort();
