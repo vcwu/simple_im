@@ -16,7 +16,10 @@
 #define DEBUG
 
 #include <iostream>
-#include "MySock.h"
+
+//User defined includes
+#include "Im_client.h"
+//#include "IM_message.h"
 
 #define WSVERS MAKEWORD(2,0)	//Win sock version.
 #define BACKLOG 5
@@ -56,15 +59,12 @@ int main(int argc, char **argv)	{
 		std::cerr << "WSA startup failed " << std::endl;
 		exit(1); 
 	}
-
-	//Start listening for peer requests.
-	MySock peerListener("tcp");
-	peerListener.startListening(BACKLOG);
-
-	//Connect to server, start listening for server msgs.
-	MySock serverListener("tcp");
-	serverListener.connectToHost(serverName, portNum);
+		
+	Im_client client;
+	client.startup(BACKLOG, serverName, portNum);
 	//Log on to server.
+		
+	
 	//GUI loop
 	
 
