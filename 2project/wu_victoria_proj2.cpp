@@ -62,9 +62,14 @@ int main(int argc, char **argv)	{
 		
 	Im_client client;
 	client.startup(BACKLOG, serverName, portNum);
-	//Log on to server.
-		
 	
+	//Log on to server.
+	std::string name;
+	std::cout << "Username: " << std::endl;
+	std::cin >> name;
+	client.logOn(name);
+
+	std::cout << "YAY I LOGGED ON" <<std::endl;
 	//GUI loop
 	
 
