@@ -37,7 +37,6 @@ unsigned short MySock::getLocalPort()	{
  */
 MySock::MySock(std::string transport = "tcp")	{
 
-	std::cout << "CEREATING SOCKET " << std::endl;
 	struct protoent *ppe;	// pointer to protocol information entr
 	int type;	//type of service
 	
@@ -51,7 +50,7 @@ MySock::MySock(std::string transport = "tcp")	{
 	//Finally, allocate a socket.
 	s = socket(PF_INET, type, ppe->p_proto);
 	if(s == INVALID_SOCKET)	{
-		std::cerr << "can't create socket";
+		std::cerr << "can't allocate socket";
 		WSACleanup();
 		exit(1);
 	}
@@ -60,7 +59,7 @@ MySock::MySock(std::string transport = "tcp")	{
 	port = 0;
 
 	#ifdef DEBUG
-	std::cout << "Socket created successfully" << std::endl;
+	std::cout << "Socket num: " << s << " allocated successfully" << std::endl;
 	#endif
 }
 
@@ -98,8 +97,10 @@ void MySock::connectToHost(std::string serverName, std::string portNum)	{
 		exit(1);
 	}
 
-	std::cout << "Socket Creation and connection successful" <<std::endl;
-
+	#ifdef DEBUG
+	std::cout << "Socket " << s << "connected successfullly to" <<
+		serverName << " port: " << portNum <<std::endl;
+	#endif
 
 }
 

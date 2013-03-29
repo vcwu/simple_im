@@ -38,7 +38,8 @@ int main(int argc, char **argv)	{
 		serverName = argv[1];
 		portNum = argv[2];
 		#ifdef DEBUG
-		printf("Server IP:%s\nPortNum:%s", serverName, portNum);
+		std::cout << "Server ip: " << serverName << "portNum: " <<
+			portNum <<std::endl;
 		#endif 
 	}
 	else	{
@@ -67,7 +68,7 @@ int main(int argc, char **argv)	{
 	std::string name;
 	std::cout << "Username: " << std::endl;
 	std::cin >> name;
-	client.logOn(name);
+	//client.logOn(name);
 
 	std::cout << "YAY I LOGGED ON" <<std::endl;
 	//GUI loop
