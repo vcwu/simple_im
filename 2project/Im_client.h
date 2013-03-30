@@ -26,8 +26,13 @@ class Im_client	{
 		Im_client();
 		~Im_client();
 
+		//listener fn for threads
+		static void listenToServer(void* me);
+
 		void startup(int backlog, std::string serverName, std::string portNum);
 		void logOn(std::string name);
+
+
 };
 
 #endif
