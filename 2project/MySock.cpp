@@ -59,7 +59,10 @@ MySock::MySock(std::string transport = "tcp")	{
 	port = 0;
 
 	#ifdef DEBUG
-	std::cout << "Socket num: " << s << " allocated successfully" << std::endl;
+	std::string s_type;
+	(type == SOCK_DGRAM) ? s_type = "udp" : s_type = "tcp";
+	std::cout << "Socket type: " << s_type << " num: " << s << " allocated successfully" <<
+		std::endl;
 	#endif
 }
 
@@ -82,11 +85,16 @@ MySock::~MySock()	{
 void MySock::connectToHost(std::string serverName, std::string portNum)	{
 	
 	struct sockaddr_in sin;	// an internet endpoint address
-
+	struct hostent *phe;	//pointer to host info entry
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons((u_short)atoi(portNum.c_str())); 
-	sin.sin_addr.s_addr = htons(inet_addr(serverName.c_str()));
+
+	if( phe = gethostbyname(serverName.c_str()))
+		memcpy(&sin.sin_addr, phe->h_addr, phe->h_length);
+	else if( sin.sin_addr.s_addr = htons(inet_addr(serverName.c_str())) ==
+		INADDR_NONE)
+		std::cerr << "can't get host entry for " << serverName;
 
 	//Connect socket.
 	if(connect(s, (struct sockaddr*) &sin, sizeof(sin))==SOCKET_ERROR) 	
@@ -98,7 +106,7 @@ void MySock::connectToHost(std::string serverName, std::string portNum)	{
 	}
 
 	#ifdef DEBUG
-	std::cout << "Socket " << s << "connected successfullly to" <<
+	std::cout << "Socket " << s << " connected successfullly to " <<
 		serverName << " port: " << portNum <<std::endl;
 	#endif
 
@@ -146,6 +154,12 @@ void MySock::startListening(int backlogSize)	{
  * listening sockets.
  */
 void MySock::sendMsg(std::string message)	{
+	
+	#ifdef DEBUG
+	std::cout << "Preparing to send on socket " << s << std::endl;
+	std::cout << "message: " << message << std::endl;
+	#endif
+
 	int bytes_sent = send(s, message.c_str(), strlen(message.c_str() ), 0);
 	if(bytes_sent == SOCKET_ERROR)	{
 		std::cerr << "Error in sending message\n" << message <<
@@ -153,7 +167,7 @@ void MySock::sendMsg(std::string message)	{
 	}
 	
 	#ifdef DEBUG
-	printf("Successfully sent msg\n%s\n", message);
+	std::cout << "Successfully sent msg" <<  message;
 	#endif
 }
 

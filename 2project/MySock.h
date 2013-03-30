@@ -26,10 +26,11 @@ class MySock {
 		~MySock();
 
 		unsigned short getLocalPort();
-
+		SOCKET getSocket()	{return s;}
 		void startListening(int backlogSize);
 		void connectToHost(std::string serverName, std::string portNum);
-	
+
+		
 		void sendMsg(std::string message);
 //		recv(std::string buffer);
 };
