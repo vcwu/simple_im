@@ -9,7 +9,10 @@
  * Main thread.
  * 	Creates socket for listening to peer requests and connecting to server.
  * 	Starts up thread to handle listening to server and peer requests.
- * 	Interacts with user. 
+ * 	Interacts with user.
+ 
+ *	TODO:
+ *		Pad port msg with ZEROES
  
  */
 
@@ -26,7 +29,8 @@
 
 //Compiled using Visual Studio's command prompt
 #pragma comment(lib, "wsock32.lib")	//link winsock li
-#pragma comment(lib, "libcmt.lib")	//for process.h
+#pragma comment(lib, "libcmt.lib")	//for process.h
+
 
 int main(int argc, char **argv)	{
 
