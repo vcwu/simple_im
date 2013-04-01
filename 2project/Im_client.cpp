@@ -95,6 +95,14 @@ void Im_client::listenToServer(void * me)	{
 				std::getline(ss, count, '\n');
 				int userCount = atoi(count.c_str());
 
+				if(userCount == -1)	{
+					getline(ss, userName, ';');
+					getline(ss, ip, ';');
+					getline(ss, port, '#');
+
+					box->log.erase (box->log.find(userName));
+				}
+				
 				for(int userNum = 1; userNum <= userCount; userNum++)		{
 					getline(ss, userName, ';');
 					getline(ss, ip, ';');
@@ -105,7 +113,7 @@ void Im_client::listenToServer(void * me)	{
 						getline(ss, port, '\n');
 					}
 
-					box->buddyLog[userName] = std::make_pair(ip, port);
+					box->log[userName] = std::make_pair(ip, port);
 				}
 			}
 			
