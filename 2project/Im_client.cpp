@@ -2,6 +2,8 @@
 
 #include "Im_client.h"
 #include "process.h"	//multi threading
+#include <utility>	//make pair
+#include <map>		//buddy log
 #include <iostream>
 #include <sstream>
 Im_client::Im_client() : userName(""), peerListener("tcp"),
@@ -29,6 +31,14 @@ void Im_client::startup(int backlog, std::string serverName, std::string portNum
 	_beginthread(listenToServer, 0, (void *) this);	
 }
 
+/*
+ * Shut down - Shuts down sockets.
+ * Should probably kill threads too.
+ */
+void Im_client::shutdown()	{
+	peerListener.~MySock();
+	serverListener.~MySock();
+}
 
 /*
  * Sends a log on message to server. 
@@ -83,17 +93,27 @@ void Im_client::listenToServer(void * me)	{
 			std::string userName, ip, port;
 			if(atoi(code.c_str()) == USR_UPDATE)	{ 
 				std::getline(ss, count, '\n');
-				for(int userNum = 0; userNum <
-						atoi(count.c_str()); userNum++)		{
+				int userCount = atoi(count.c_str());
+
+				for(int userNum = 1; userNum <= userCount; userNum++)		{
 					getline(ss, userName, ';');
 					getline(ss, ip, ';');
-					getline(ss, port, '\n');
-	
+					if(userNum == userCount)
+						getline(ss, port, '#');	//END  of message
+						
+					else	{
+						getline(ss, port, '\n');
+					}
+
+					box->buddyLog[userName] = std::make_pair(ip, port);
 				}
 			}
 			
 			#ifdef DEBUG
 			std::cout << "Parsing: count = " << count << std::endl;
+			std::cout << "userName = " << userName << std::endl;
+			std::cout << "port = " << port << std::endl;
+			std::cout << "ip = " <<ip << std::endl;
 			#endif
 
 		}

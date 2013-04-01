@@ -43,7 +43,7 @@ class Im_client	{
 
 		void startup(int backlog, std::string serverName, std::string portNum);
 		void logOn(std::string name);
-
+		void shutdown();
 
 };
 
