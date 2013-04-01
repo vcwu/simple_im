@@ -3,6 +3,7 @@
 #include "Im_client.h"
 #include "process.h"	//multi threading
 #include <iostream>
+#include <sstream>
 Im_client::Im_client() : userName(""), peerListener("tcp"),
 	serverListener("tcp")	{}
 
@@ -69,8 +70,32 @@ void Im_client::listenToServer(void * me)	{
 			std::cerr << "ERROR in receiving message from server" << std::endl;	
 		}
 		else	{
+			#ifdef DEBUG
 			std::string msg(recvbuf);
 			std::cout << "GOT: " << msg << std::endl;
+			#endif
+
+			//Only check for #4 messages, update buddy log.
+			std::stringstream ss(msg);
+			std::string code, count;
+			std::getline(ss, code,';');
+			
+			std::string userName, ip, port;
+			if(atoi(code.c_str()) == USR_UPDATE)	{ 
+				std::getline(ss, count, '\n');
+				for(int userNum = 0; userNum <
+						atoi(count.c_str()); userNum++)		{
+					getline(ss, userName, ';');
+					getline(ss, ip, ';');
+					getline(ss, port, '\n');
+	
+				}
+			}
+			
+			#ifdef DEBUG
+			std::cout << "Parsing: count = " << count << std::endl;
+			#endif
+
 		}
 	}
 }
