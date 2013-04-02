@@ -100,7 +100,11 @@ void Im_client::listenToServer(void * me)	{
 					getline(ss, ip, ';');
 					getline(ss, port, '#');
 
-					box->log.erase (box->log.find(userName));
+					//Make sure this user is in our
+					//buddylog.
+					if(box->log.find(userName) !=
+							box->log.end())
+						box->log.erase (box->log.find(userName));
 				}
 				
 				for(int userNum = 1; userNum <= userCount; userNum++)		{
