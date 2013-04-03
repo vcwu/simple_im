@@ -1,4 +1,4 @@
-#define DEBUG
+//#define DEBUG
 
 #include "Im_client.h"
 #include "process.h"	//multi threading
@@ -46,11 +46,8 @@ void Im_client::shutdown()	{
  */
 
 void Im_client::logOn(std::string name)	{
-	#ifdef DEBUG
 	std::cout << "Signing in as " << name << std::endl;
-	#endif
 
-	
 	std::stringstream ss;
 	ss << "1;" << name << ";" << std::setw(5) << std::setfill('0') << peerListener.getLocalPort() << "#";
 	std::string message = ss.str();
@@ -81,15 +78,14 @@ void Im_client::listenToServer(void * me)	{
 			std::cerr << "ERROR in receiving message from server" << std::endl;	
 		}
 		else	{
-			#ifdef DEBUG
 			std::string msg(recvbuf);
+			#ifdef DEBUG
 			std::cout << "GOT: " << msg << std::endl <<std::endl;
 			#endif
-
 	
 			//Delimit messages by #. && wait for entire message??
 			int beginIndex = 0;
-			unsigned foundIndex; 
+			unsigned foundIndex = 0; 
 			int substrLen;
 			std::string littleMsg;
 			do{
@@ -136,6 +132,7 @@ void Im_client::parseServerMsg(std::string msg)	{
 			if(log.find(userName) !=
 					log.end())
 				log.erase (log.find(userName));
+			std::cout << userName << "just logged off." << std::endl;
 		}
 		
 		for(int userNum = 1; userNum <= userCount; userNum++)		{
@@ -148,29 +145,26 @@ void Im_client::parseServerMsg(std::string msg)	{
 				getline(ss, port, '\n');
 			}
 
-			std::pair<BuddyLog::iterator, bool> it;
+			std::pair<BuddyLog::iterator, bool> pairIt;
 			UsrInfo info = std::make_pair(ip, port);
-			it = log.insert(std::make_pair(userName, info));
+			pairIt = log.insert(std::make_pair(userName, info));
 			
 			//If user already exists in buddylog,
 			//update their info
-			if(!it.second)	{
+			if(!pairIt.second)	{
 				log[userName] = info;	
 			}
+			std::cout << userName << " just logged on." << std::endl;
+			std::cout << "Buddies: \n";
+			BuddyLog::iterator it;
+			for(it = log.begin(); it!= log.end(); ++it)	{
+				std::cout << it->first << " => " << 
+					it->second.first << " " <<
+					it->second.second << std::endl;
+			}
+			std::cout << std::endl;
 		}
-		#ifdef DEBUG
-		std::cout << "BUDDY LOG : " << std::endl;
-		BuddyLog::iterator it;
-		for(it = log.begin(); it!= log.end();
-				++it)	{
-			std::cout << it->first << "=>IP" <<
-				it->second.first << " " <<
-				it->second.second << std::endl;
-		}
-		std::cout<< std::endl;
-		#endif
-		
-	
+			
 
 	}
 }
