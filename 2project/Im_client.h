@@ -23,8 +23,9 @@ class Im_client	{
 		MySock serverListener;
 
 		std::string userName;
-		typedef std::map< std::string, std::pair< std::string,
-			std::string> > BuddyLog;
+		typedef std::pair< std::string, std::string> UsrInfo;
+		typedef std::map< std::string, UsrInfo > BuddyLog;
+		
 		BuddyLog log;		
 	public:
 		Im_client();
