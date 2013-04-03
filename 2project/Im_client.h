@@ -44,6 +44,8 @@ class Im_client	{
 		static void listenToServer(void* me);
 
 		void startup(int backlog, std::string serverName, std::string portNum);
+		void parseServerMsg(std::string littleMsg);
+
 		void logOn(std::string name);
 		void shutdown();
 
