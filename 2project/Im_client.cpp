@@ -5,6 +5,7 @@
 #include <utility>	//make pair
 #include <map>		//buddy log
 #include <iostream>
+#include <iomanip>	//setw, setfill
 #include <sstream>
 Im_client::Im_client() : userName(""), peerListener("tcp"),
 	serverListener("tcp")	{}
@@ -51,7 +52,7 @@ void Im_client::logOn(std::string name)	{
 
 	
 	std::stringstream ss;
-	ss << "1;" << name << ";" << peerListener.getLocalPort() << "#";
+	ss << "1;" << name << ";" << std::setw(5) << std::setfill('0') << peerListener.getLocalPort() << "#";
 	std::string message = ss.str();
 	
 	serverListener.sendMsg(message);
@@ -117,9 +118,18 @@ void Im_client::listenToServer(void * me)	{
 						getline(ss, port, '\n');
 					}
 
-					box->log[userName] = std::make_pair(ip, port);
+					std::pair<BuddyLog::iterator, bool> it;
+					UsrInfo info = std::make_pair(ip, port);
+					it =
+						box->log.insert(std::make_pair(userName, info));
+					
+					//If user already exists in buddylog,
+					//update their info
+					if(!it.second)	{
+						box->log[userName] = info;	
+					}
 				}
-			}
+			
 			
 			#ifdef DEBUG
 			std::cout << "Parsing: count = " << count << std::endl;
@@ -127,7 +137,8 @@ void Im_client::listenToServer(void * me)	{
 			std::cout << "port = " << port << std::endl;
 			std::cout << "ip = " <<ip << std::endl;
 			#endif
-
+			
+			}
 		}
 	}
 }
