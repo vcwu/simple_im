@@ -83,62 +83,94 @@ void Im_client::listenToServer(void * me)	{
 		else	{
 			#ifdef DEBUG
 			std::string msg(recvbuf);
-			std::cout << "GOT: " << msg << std::endl;
+			std::cout << "GOT: " << msg << std::endl <<std::endl;
 			#endif
 
-			//Only check for #4 messages, update buddy log.
-			std::stringstream ss(msg);
-			std::string code, count;
-			std::getline(ss, code,';');
-			
-			std::string userName, ip, port;
-			if(atoi(code.c_str()) == USR_UPDATE)	{ 
-				std::getline(ss, count, '\n');
-				int userCount = atoi(count.c_str());
+	
+			//Delimit messages by #. && wait for entire message??
+			int beginIndex = 0;
+			unsigned foundIndex; 
+			int substrLen;
+			std::string littleMsg;
+			do{
+				foundIndex = msg.find('#', beginIndex);
+				substrLen = foundIndex - beginIndex + 1;
+				littleMsg = msg.substr(beginIndex, substrLen);
+				box->parseServerMsg(littleMsg);
+				beginIndex = foundIndex + 1;
+				#ifdef DEBUG
+				std::cout << "foundIndex: " << foundIndex; 
+				std::cout << " substrLen: " << substrLen;
+				std::cout << " MSG:: " << littleMsg; 
+				#endif
+			} while(beginIndex < msg.size());
+		}
+	}
+}
 
-				if(userCount == -1)	{
-					getline(ss, userName, ';');
-					getline(ss, ip, ';');
-					getline(ss, port, '#');
 
-					//Make sure this user is in our
-					//buddylog.
-					if(box->log.find(userName) !=
-							box->log.end())
-						box->log.erase (box->log.find(userName));
-				}
+
+/*
+ * Given a message, if it is a type 4, will parse active user list and update
+ * buddy.
+ * Otherwise, ignores the message.
+ * log.
+ */
+void Im_client::parseServerMsg(std::string msg)	{
+	std::stringstream ss(msg);
+	std::string code, count;
+	std::getline(ss, code,';');
+	
+	std::string userName, ip, port;
+	if(atoi(code.c_str()) == USR_UPDATE)	{ 
+		std::getline(ss, count, '\n');
+		int userCount = atoi(count.c_str());
+
+		if(userCount == -1)	{
+			getline(ss, userName, ';');
+			getline(ss, ip, ';');
+			getline(ss, port, '#');
+
+			//Make sure this user is in our
+			//buddylog.
+			if(log.find(userName) !=
+					log.end())
+				log.erase (log.find(userName));
+		}
+		
+		for(int userNum = 1; userNum <= userCount; userNum++)		{
+			getline(ss, userName, ';');
+			getline(ss, ip, ';');
+			if(userNum == userCount)
+				getline(ss, port, '#');	//END  of message
 				
-				for(int userNum = 1; userNum <= userCount; userNum++)		{
-					getline(ss, userName, ';');
-					getline(ss, ip, ';');
-					if(userNum == userCount)
-						getline(ss, port, '#');	//END  of message
-						
-					else	{
-						getline(ss, port, '\n');
-					}
+			else	{
+				getline(ss, port, '\n');
+			}
 
-					std::pair<BuddyLog::iterator, bool> it;
-					UsrInfo info = std::make_pair(ip, port);
-					it =
-						box->log.insert(std::make_pair(userName, info));
-					
-					//If user already exists in buddylog,
-					//update their info
-					if(!it.second)	{
-						box->log[userName] = info;	
-					}
-				}
+			std::pair<BuddyLog::iterator, bool> it;
+			UsrInfo info = std::make_pair(ip, port);
+			it = log.insert(std::make_pair(userName, info));
 			
-			
-			#ifdef DEBUG
-			std::cout << "Parsing: count = " << count << std::endl;
-			std::cout << "userName = " << userName << std::endl;
-			std::cout << "port = " << port << std::endl;
-			std::cout << "ip = " <<ip << std::endl;
-			#endif
-			
+			//If user already exists in buddylog,
+			//update their info
+			if(!it.second)	{
+				log[userName] = info;	
 			}
 		}
+		#ifdef DEBUG
+		std::cout << "BUDDY LOG : " << std::endl;
+		BuddyLog::iterator it;
+		for(it = log.begin(); it!= log.end();
+				++it)	{
+			std::cout << it->first << "=>IP" <<
+				it->second.first << " " <<
+				it->second.second << std::endl;
+		}
+		std::cout<< std::endl;
+		#endif
+		
+	
+
 	}
 }
