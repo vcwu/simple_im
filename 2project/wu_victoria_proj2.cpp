@@ -10,7 +10,10 @@
  * Main thread.
  * 	Creates socket for listening to peer requests and connecting to server.
  * 	Starts up thread to handle listening to server and peer requests.
- * 	Interacts with user. 
+ * 	Interacts with user.
+ 
+ *	TODO:
+ *		Pad port msg with ZEROES
  
  */
 
