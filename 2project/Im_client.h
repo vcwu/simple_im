@@ -53,6 +53,7 @@ class Im_client	{
 
 	
 		//Backend stuff.
+		void displayMenu();
 		void startup(int backlog, std::string serverName, std::string portNum);
 		void logOn(std::string name);
 		void parseServerMsg(std::string littleMsg);
@@ -61,7 +62,7 @@ class Im_client	{
 		//User functions.
 		void sendMessage();
 		void getFileNames();
-
+		void downloadFile();
 		//
 		bool sendToBuddy(std::string buddy, std::string msg);
 

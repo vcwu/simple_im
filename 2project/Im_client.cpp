@@ -204,6 +204,18 @@ void Im_client::parseServerMsg(std::string msg)	{
 //***************************************
 
 /*
+ * displayMenu
+ */
+void Im_client::displayMenu()	{
+	std::cout << "What would you like to do?" << std::endl;
+//	std::cout << "\tCheck for messages (c)" << std::endl;
+	std::cout << "\tSend msg to buddy (s)" << std::endl;
+	std::cout << "\tGet file list from buddy (f)" << std::endl;
+	std::cout << "\tDownload file from buddy (d)" << std::endl;
+	std::cout << "\tQuit (q)" << std::endl;
+}
+
+/*
  * sendMessage()
  * Asks user for message and recipient, sends.
  */
@@ -246,6 +258,13 @@ void Im_client::getFileNames()	{
 		std::cout << "File list requested from " << buddy << std::endl;
 	}
 
+}
+
+/*
+ * downloadFile
+ */
+void Im_client::downloadFile()	{
+	std::cout << "let's download a file - yohoo! " << std::endl;
 }
 
 /**
