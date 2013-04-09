@@ -94,6 +94,7 @@ int main(int argc, char **argv)	{
 			case 'd': client.downloadFile(); break;
 			case 'q': userContinue = false; break;
 			default: std::cout << "Invalid input. " << std::endl;
+				 std::cout << "Input-> " << input << st::endl;
 		}
 	}
 	

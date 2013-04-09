@@ -48,6 +48,9 @@ void Im_client::startup(int backlog, std::string serverName, std::string portNum
  */
 void Im_client::shutdown()	{
 
+	#ifdef DEBUG
+	std::cout << "Trying to Shutdown... " << std::endl;
+	#endif
 	closingSocketTime = true;
 	//may need to wait a bit?
 
@@ -98,6 +101,9 @@ void Im_client::listenToServer(void * me)	{
 		if(recv(serverSock, recvbuf, bufferLength, 0) == SOCKET_ERROR)
 		{
 			if(box->closingSocketTime)	{
+				#ifdef DEBUG
+				std::cout << "From THREAD 1: Time for Shutdown!! " << std::endl; 
+				#endif
 				break;
 			}
 			std::cerr << "ERROR in receiving message from server" << std::endl;	
@@ -127,10 +133,17 @@ void Im_client::listenToServer(void * me)	{
 			} while(beginIndex < msg.size());
 		}
 	}
+	#ifdef DEBUG
+	std::cout << "Setting readyToShutdown flag..." << std::endl;
+	#endif 
 	EnterCriticalSection(&(box->critSec));	
 	box->readyToShutdown = true;
 	LeaveCriticalSection(&(box->critSec));
 	WakeConditionVariable( &(box->threadsDown));
+	#ifdef DEBUG
+	std::cout << "THREAD 1 exiting...." << std::endl;
+	#endif 
+
 }
 
 
