@@ -1,3 +1,9 @@
+/*
+ * cs 423 client server applications
+ * victoria wu
+ * IM_Client implementation
+ */
+
 //#define DEBUG
 
 #include "Im_client.h"
@@ -8,7 +14,11 @@
 #include <iomanip>	//setw, setfill
 #include <sstream>
 Im_client::Im_client() : userName(""), peerListener("tcp"),
-	serverListener("tcp")	{}
+	serverListener("tcp")	{
+		closingSocketTime = false;
+		InitializeCriticalSection(&critSec);
+		InitializeConditionVariable(&threadsDown);
+	}
 
 Im_client::~Im_client()	{
 
@@ -37,6 +47,18 @@ void Im_client::startup(int backlog, std::string serverName, std::string portNum
  * Should probably kill threads too.
  */
 void Im_client::shutdown()	{
+
+	closingSocketTime = true;
+	//may need to wait a bit?
+
+	EnterCriticalSection( & critSec);
+	while(	!readyToShutdown)	{
+		SleepConditionVariableCS(&threadsDown, &critSec, INFINITE);
+	}
+	LeaveCriticalSection(& critSec);
+
+	std::cout << "Threads all ok to shutdown! " << std::endl;
+
 	peerListener.~MySock();
 	serverListener.~MySock();
 }
@@ -71,10 +93,13 @@ void Im_client::listenToServer(void * me)	{
 	const int bufferLength = 550;
 	char recvbuf[bufferLength];
 
-	while(true)	{
+	while(!box->closingSocketTime)	{
 		memset(recvbuf, '\0', bufferLength);
 		if(recv(serverSock, recvbuf, bufferLength, 0) == SOCKET_ERROR)
 		{
+			if(box->closingSocketTime)	{
+				break;
+			}
 			std::cerr << "ERROR in receiving message from server" << std::endl;	
 		}
 		else	{
@@ -102,6 +127,10 @@ void Im_client::listenToServer(void * me)	{
 			} while(beginIndex < msg.size());
 		}
 	}
+	EnterCriticalSection(&(box->critSec));	
+	box->readyToShutdown = true;
+	LeaveCriticalSection(&(box->critSec));
+	WakeConditionVariable( &(box->threadsDown));
 }
 
 
@@ -167,4 +196,74 @@ void Im_client::parseServerMsg(std::string msg)	{
 			
 
 	}
+}
+
+
+//***************************************
+//USER INTERACTION
+//***************************************
+
+/*
+ * sendMessage()
+ * Asks user for message and recipient, sends.
+ */
+void Im_client::sendMessage()	{
+	std::string buffer;
+	std::string message, buddy;
+	std::cout << "Recipient: ";
+	std::cin >> buddy;
+	std::cout << "Message: ";
+	std::cin >> message;
+
+	std::stringstream ss;
+	ss << SEND_MSG << ";" << userName << "/n"
+		<< buddy << "/n" << message << "#"; 
+	
+	
+	if(!sendToBuddy(buddy, ss.str()))	{
+		std::cout << " Unable to send to " << buddy << std::endl;
+	}
+	else	{
+		std::cout << "Sent msg successfully to " << buddy << std::endl;
+	}
+
+}
+
+/*
+ * getFileNames
+ */
+void Im_client::getFileNames()	{
+	std::string buddy;
+	std::cout << "Who would you like to get files from? ";
+	std::cin >> buddy;
+	std::stringstream ss;
+	ss << FILE_LIST << ";fileList/n";
+
+	if(!sendToBuddy(buddy, ss.str()))	{
+		std::cout << " Unable to send to " << buddy << std::endl;
+	}
+	else	{
+		std::cout << "File list requested from " << buddy << std::endl;
+	}
+
+}
+
+/**
+ * sendToBuddy
+ */
+bool Im_client::sendToBuddy(std::string buddy, std::string msg)	{
+	BuddyLog::iterator it;
+	it = log.find(buddy);
+	if(it == log.end())	{
+		std::cout << buddy << " is not logged on. " << std::endl;
+		return false;
+	}
+	else	{
+		MySock buddy;
+		std::string ip = it->second.first;
+		std::string port = it->second.second;
+		buddy.connectToHost(ip, port);
+		buddy.sendMsg(msg);
+	}
+	return true;	
 }
