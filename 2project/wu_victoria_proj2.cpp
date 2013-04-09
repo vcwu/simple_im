@@ -4,6 +4,7 @@
  * victoria wu
  * spring 2013*
  *
+ *
  * Peer to Peer programming, connection oriented client/server
  * 
  * Main thread.
@@ -14,8 +15,10 @@
  */
 
 #define DEBUG
+#define COTTER
 
 #include <iostream>
+#include <string>	//getline
 
 //User defined includes
 #include "Im_client.h"
@@ -26,10 +29,12 @@
 
 //Compiled using Visual Studio's command prompt
 #pragma comment(lib, "wsock32.lib")	//link winsock li
-#pragma comment(lib, "libcmt.lib")	//for process.h
+#pragma comment(lib, "libcmt.lib")	//for process.h
+
 
 int main(int argc, char **argv)	{
 
+		
 	//Take in user specified port num, server name.
 	std::string serverName;
 	std::string portNum;
@@ -43,7 +48,7 @@ int main(int argc, char **argv)	{
 		#endif 
 	}
 	else	{
-		#ifdef DEBUG
+		#ifdef COTTER
 		serverName = "134.193.128.197";
 		portNum = "3456";
 		#endif
@@ -66,13 +71,32 @@ int main(int argc, char **argv)	{
 	
 	//Log on to server.
 	std::string name;
-	std::cout << "Username: " << std::endl;
+	std::cout << "What is your username? ";
 	std::cin >> name;
-	//client.logOn(name);
 
-	std::cout << "YAY I LOGGED ON" <<std::endl;
-	//GUI loop
+	client.logOn(name);
+
 	
+	std::string input;
+	char command;
+	bool userContinue = true;
+	while(userContinue)	{
+		client.displayMenu();
+		getline(std::cin, input);
+		(input.length() == 1) ? command = input.at(0)
+			: command = 'X';
+		switch (command)	{
+			case 's': client.sendMessage();	break;
+			case 'f': client.getFileNames(); break;
+			case 'd': client.downloadFile(); break;
+			case 'q': userContinue = false; break;
+			default: std::cout << "Invalid input. " << std::endl;
+		}
+	}
+	
+	std::cout << " Bye! " << std::endl;
+	client.shutdown();
+	std::cin >> name;
 
 	WSACleanup();
 }
