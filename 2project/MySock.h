@@ -31,7 +31,7 @@ class MySock {
 		void connectToHost(std::string serverName, std::string portNum);
 
 		
-		void sendMsg(std::string message);
+		bool sendMsg(std::string message);
 //		recv(std::string buffer);
 };
 

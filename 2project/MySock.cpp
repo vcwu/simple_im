@@ -153,7 +153,7 @@ void MySock::startListening(int backlogSize)	{
  * Send given message to connected host. Should not be called on 
  * listening sockets.
  */
-void MySock::sendMsg(std::string message)	{
+bool MySock::sendMsg(std::string message)	{
 	
 	#ifdef DEBUG
 	std::cout << "Preparing to send on socket " << s << std::endl;
@@ -164,11 +164,13 @@ void MySock::sendMsg(std::string message)	{
 	if(bytes_sent == SOCKET_ERROR)	{
 		std::cerr << "Error in sending message\n" << message <<
 			std::endl;
+		return false;
 	}
 	
 	#ifdef DEBUG
 	std::cout << "Successfully sent msg" <<  message << std::endl;
 	#endif
+	return true;
 }
 
 
