@@ -4,7 +4,7 @@
  * IM_Client implementation
  */
 
-//#define DEBUG
+#define DEBUG
 
 #include "Im_client.h"
 #include "process.h"	//multi threading
@@ -130,7 +130,7 @@ void Im_client::listenToServer(void * me)	{
 				std::cout << " substrLen: " << substrLen;
 				std::cout << " MSG:: " << littleMsg; 
 				#endif
-			} while(beginIndex < msg.size());
+			} while(beginIndex < msg.size() - 1);
 		}
 	}
 	#ifdef DEBUG
@@ -278,7 +278,11 @@ void Im_client::getFileNames()	{
  */
 void Im_client::downloadFile()	{
 	std::cout << "let's download a file - yohoo! " << std::endl;
+	//Thread time! Yeah!
+	//
 }
+
+
 
 /**
  * sendToBuddy
@@ -296,6 +300,8 @@ bool Im_client::sendToBuddy(std::string buddy, std::string msg)	{
 		std::string port = it->second.second;
 		buddy.connectToHost(ip, port);
 		buddy.sendMsg(msg);
+		//send msg returns false...??
+		//need better error handling
 	}
 	return true;	
 }
