@@ -48,9 +48,9 @@ class Im_client	{
 			FILE_DL
 		};
 
-		//listener fn for threads
+		//listener functions for threads
 		static void listenToServer(void* me);
-
+		static void listenToPeers(void* me);
 	
 		//Backend stuff.
 		void displayMenu();
@@ -58,13 +58,15 @@ class Im_client	{
 		void logOn(std::string name);
 		void parseServerMsg(std::string littleMsg);
 		void shutdown();
+		bool sendToBuddy(std::string buddy, std::string msg);
 
 		//User functions.
 		void sendMessage();
 		void getFileNames();
 		void downloadFile();
-		//
-		bool sendToBuddy(std::string buddy, std::string msg);
+		
+		//From other peers to me.
+		
 
 };
 

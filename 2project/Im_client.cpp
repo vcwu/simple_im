@@ -146,6 +146,80 @@ void Im_client::listenToServer(void * me)	{
 
 }
 
+/*
+ * Thread fn to listen for replies from other users.
+ */
+void Im_client::listenToPeers(void * me)	{
+	Im_client* box = (Im_client*)me;
+	SOCKET peerListen = box->peerListener.getSocket();
+
+	#ifdef DEBUG
+	std::cout << "FROM THREAD 2: Listening for peer messages on socket"
+		<< peerListen << std::endl;
+	#endif
+
+
+	const int bufferLength = 550;
+	char recvbuf[bufferLength];
+
+	while(!box->closingSocketTime)	{
+		memset(recvbuf, '\0', bufferLength);
+		if(recv(peerListen, recvbuf, bufferLength, 0) == SOCKET_ERROR)
+		{
+			if(box->closingSocketTime)	{
+				#ifdef DEBUG
+				std::cout << "From THREAD 2: Time for Shutdown!! " << std::endl; 
+				#endif
+				break;
+			}
+			std::cerr << "ERROR in receiving message from peer" << std::endl;	
+		}
+		else	{
+			std::string msg(recvbuf);
+			#ifdef DEBUG
+			std::cout << "GOT: " << msg << std::endl <<std::endl;
+			#endif
+
+			/*
+			//Delimit messages by #. && wait for entire message??
+			int beginIndex = 0;
+			unsigned foundIndex = 0; 
+			int substrLen;
+			std::string littleMsg;
+			do{
+				foundIndex = msg.find('#', beginIndex);
+				substrLen = foundIndex - beginIndex + 1;
+				littleMsg = msg.substr(beginIndex, substrLen);
+				box->parseServerMsg(littleMsg);
+				beginIndex = foundIndex + 1;
+				#ifdef DEBUG
+				std::cout << "foundIndex: " << foundIndex; 
+				std::cout << " substrLen: " << substrLen;
+				std::cout << " MSG:: " << littleMsg; 
+				#endif
+			} while(beginIndex < msg.size() - 1);
+			*/
+		}
+	}
+	#ifdef DEBUG
+	std::cout << "Setting readyToShutdown flag..." << std::endl;
+	#endif 
+
+	//TODO TODO TODO
+	//Make this a semaphore. can't just use one bool for two threads
+	/*
+	EnterCriticalSection(&(box->critSec));	
+	box->readyToShutdown = true;
+	LeaveCriticalSection(&(box->critSec));
+	WakeConditionVariable( &(box->threadsDown));
+	*/
+	#ifdef DEBUG
+	std::cout << "THREAD 2 exiting...." << std::endl;
+	#endif 
+
+}
+
+
 
 
 /*
