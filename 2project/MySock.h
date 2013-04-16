@@ -28,7 +28,7 @@ class MySock {
 		unsigned short getLocalPort();
 		SOCKET getSocket()	{return s;}
 		void startListening(int backlogSize, u_short port);
-		void connectToHost(std::string serverName, std::string portNum);
+		bool connectToHost(std::string serverName, std::string portNum);
 
 		
 		bool sendMsg(std::string message);

@@ -82,7 +82,7 @@ MySock::~MySock()	{
  * @param serverName server IP address in dotted-decimal format
  * @param portNum 
  */
-void MySock::connectToHost(std::string serverName, std::string portNum)	{
+bool MySock::connectToHost(std::string serverName, std::string portNum)	{
 	
 	struct sockaddr_in sin;	// an internet endpoint address
 	struct hostent *phe;	//pointer to host info entry
@@ -101,15 +101,16 @@ void MySock::connectToHost(std::string serverName, std::string portNum)	{
 	{
 		std::cerr << "can't connect to " << serverName << " " << portNum;
 		std::cout << "errno: " << WSAGetLastError();
-		WSACleanup();
-		exit(1);
+		return false;
+	//	WSACleanup();
+	//	exit(1);
 	}
 
 	#ifdef DEBUG
 	std::cout << "Socket " << s << " connected successfullly to " <<
 		serverName << " port: " << portNum <<std::endl;
 	#endif
-
+	return true;
 }
 
 /*

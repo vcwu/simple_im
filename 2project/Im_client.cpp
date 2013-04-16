@@ -387,8 +387,12 @@ bool Im_client::sendToBuddy(std::string buddy, std::string msg)	{
 		MySock buddy;
 		std::string ip = it->second.first;
 		std::string port = it->second.second;
-		buddy.connectToHost(ip, port);
-		buddy.sendMsg(msg);
+		if(buddy.connectToHost(ip, port))	{
+			buddy.sendMsg(msg);
+		}
+		else	{
+			return false;
+		}
 		//send msg returns false...??
 		//need better error handling
 	}
