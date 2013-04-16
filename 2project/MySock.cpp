@@ -134,11 +134,11 @@ bool MySock::connectToHost(std::string serverName, std::string portNum)	{
  */
 void MySock::startListening(int backlogSize, u_short p)	{
 	struct sockaddr_in my_addr;
-	
+
+	memset(&my_addr, 0, sizeof(my_addr));
 	my_addr.sin_family = AF_INET;
 	my_addr.sin_port = p;			
 	my_addr.sin_addr.s_addr = INADDR_ANY;	
-	memset(& (my_addr.sin_zero), '\0', 8);	//zero the rest of struct
 
 	port = p;
 	//Binding socket
