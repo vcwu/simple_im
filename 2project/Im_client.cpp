@@ -134,7 +134,7 @@ void Im_client::listenToServer(void * me)	{
 				std::cout << " substrLen: " << substrLen;
 				std::cout << " MSG:: " << littleMsg; 
 				#endif
-			} while(beginIndex < msg.size() - 1);
+			} while(beginIndex < msg.size() - 1 && !(foundIndex>550));
 		}
 	}
 	#ifdef DEBUG
@@ -168,10 +168,10 @@ void Im_client::listenToPeers(void * me)	{
 	char recvbuf[bufferLength];
 
 	struct sockaddr their_addr;
-
+	int addr_len = sizeof( their_addr);
 	while(!box->closingSocketTime)	{
 		memset(recvbuf, '\0', bufferLength);
-		SOCKET new_fd = accept(peerListen, &their_addr, 0);
+		SOCKET new_fd = accept(peerListen, &their_addr, &addr_len);
 		if(new_fd == SOCKET_ERROR)
 		{
 			if(box->closingSocketTime)	{
