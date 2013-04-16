@@ -31,6 +31,18 @@ unsigned short MySock::getLocalPort()	{
 }
 
 /*
+ * Given a socket file descriptor, makes a MySock wrapper.
+ */
+MySock::MySock(SOCKET sock)	{
+	s = sock;
+	#ifdef DEBUG
+	std::cout << "Socket  num: " << s << " wrapped successfully" <<
+		std::endl;
+	#endif
+
+}
+
+/*
  * Creates a socket of specified transport type.
  * Does not bind to a port.
  * modified from Comer's Internetworking with TCP/IP Volume III, section 7.7

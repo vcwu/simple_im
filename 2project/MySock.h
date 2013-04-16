@@ -23,6 +23,7 @@ class MySock {
 		unsigned short port;	//for easier access
 	public:
 		MySock(std::string transport = "tcp");	//defaults to TCP
+		MySock(SOCKET sock);
 		~MySock();
 
 		unsigned short getLocalPort();
