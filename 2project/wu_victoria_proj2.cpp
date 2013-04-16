@@ -20,6 +20,8 @@
 #define DEBUG
 #define COTTER
 
+
+
 #include <iostream>
 #include <string>	//getline
 
@@ -29,7 +31,7 @@
 
 #define WSVERS MAKEWORD(2,0)	//Win sock version.
 #define BACKLOG 5
-
+#define LISTEN_PORT 65432
 //Compiled using Visual Studio's command prompt
 #pragma comment(lib, "wsock32.lib")	//link winsock li
 #pragma comment(lib, "libcmt.lib")	//for process.h
@@ -70,7 +72,7 @@ int main(int argc, char **argv)	{
 	}
 		
 	Im_client client;
-	client.startup(BACKLOG, serverName, portNum);
+	client.startup(BACKLOG, serverName, portNum, LISTEN_PORT);
 	
 	//Log on to server.
 	std::string name;
@@ -80,21 +82,24 @@ int main(int argc, char **argv)	{
 	client.logOn(name);
 
 	
-	std::string input;
-	char command;
+	std::string input = " ";
+	char command = ' ' ;
 	bool userContinue = true;
 	while(userContinue)	{
 		client.displayMenu();
+/*		while(input.length() < 2)	{
+			getline(std::cin, input);
+		}
+*/
 		getline(std::cin, input);
-		(input.length() == 1) ? command = input.at(0)
-			: command = 'X';
+		(input.length() > 0) ? command = input.at(0) : command = 'X';
 		switch (command)	{
 			case 's': client.sendMessage();	break;
 			case 'f': client.getFileNames(); break;
 			case 'd': client.downloadFile(); break;
 			case 'q': userContinue = false; break;
 			default: std::cout << "Invalid input. " << std::endl;
-				 std::cout << "Input-> " << input << st::endl;
+				 printf("Input: %c\n", command);
 		}
 	}
 	

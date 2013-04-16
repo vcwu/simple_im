@@ -24,13 +24,14 @@ Im_client::~Im_client()	{
 
 }
 
-void Im_client::startup(int backlog, std::string serverName, std::string portNum){
+void Im_client::startup(int backlog, std::string serverName, std::string
+		portNum, u_short port){
 	//Start listening for peer requests.
 	#ifdef DEBUG
 	std::cout << "Starting up peer listener on socket: " <<
 		peerListener.getSocket() <<std::endl;;
 	#endif
-	peerListener.startListening(backlog);
+	peerListener.startListening(backlog, port);
 	_beginthread(listenToPeers, 0, (void *) this);	
 
 	#ifdef DEBUG
@@ -108,6 +109,8 @@ void Im_client::listenToServer(void * me)	{
 				break;
 			}
 			std::cerr << "ERROR in receiving message from server" << std::endl;	
+			std::cerr << "Error# " << WSAGetLastError() <<
+				std::endl;
 		}
 		else	{
 			std::string msg(recvbuf);

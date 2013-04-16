@@ -54,7 +54,8 @@ class Im_client	{
 	
 		//Backend stuff.
 		void displayMenu();
-		void startup(int backlog, std::string serverName, std::string portNum);
+		void startup(int backlog, std::string serverName, std::string
+				portNum, u_short listeningPort);
 		void logOn(std::string name);
 		void parseServerMsg(std::string littleMsg);
 		void shutdown();

@@ -119,25 +119,26 @@ void MySock::connectToHost(std::string serverName, std::string portNum)	{
  *
  * @param backlogSize 
  */
-void MySock::startListening(int backlogSize)	{
+void MySock::startListening(int backlogSize, u_short port)	{
 	struct sockaddr_in my_addr;
 	
 	my_addr.sin_family = AF_INET;
-	my_addr.sin_port = 0;			//choose an unused port 
+	my_addr.sin_port = htons(port);			
 	my_addr.sin_addr.s_addr = INADDR_ANY;	
 	memset(& (my_addr.sin_zero), '\0', 8);	//zero the rest of struct
 
 	//Binding socket
 	if( bind(s, (struct sockaddr*) &my_addr, sizeof(struct sockaddr)) == SOCKET_ERROR)	{
 		std::cerr << "Cannot bind socket " << s << "to port" << std::endl;
+		std::cerr << "err#: " << WSAGetLastError() << std::endl;
 	}
-
+	else	{
 	//Find out port number
-	unsigned short port = getLocalPort();	
+	//unsigned short port = getLocalPort();	
 	#ifdef DEBUG
 	std::cout << "Bound socket " << s << " to port " << port << std::endl;
 	#endif
-
+	}
 	//Start listening
 	if( listen(s, backlogSize) == SOCKET_ERROR)	{
 		std::cerr << "Cannot listen on socket " << s<< std::endl;
