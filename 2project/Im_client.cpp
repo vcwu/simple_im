@@ -31,13 +31,14 @@ void Im_client::startup(int backlog, std::string serverName, std::string portNum
 		peerListener.getSocket() <<std::endl;;
 	#endif
 	peerListener.startListening(backlog);
-	//START UP THEREADL:FJKDL:SKFJD
+	_beginthread(listenToPeers, 0, (void *) this);	
 
 	#ifdef DEBUG
 	std::cout << "Starting up connection to server on socket: " <<
 		serverListener.getSocket() << std::endl;
 	#endif
-//Connect to server and start listening.
+
+	//Connect to server and start listening.
 	serverListener.connectToHost(serverName, portNum);
 	_beginthread(listenToServer, 0, (void *) this);	
 }
@@ -148,6 +149,7 @@ void Im_client::listenToServer(void * me)	{
 
 /*
  * Thread fn to listen for replies from other users.
+ * Reference: Beej's guide To Networking
  */
 void Im_client::listenToPeers(void * me)	{
 	Im_client* box = (Im_client*)me;
@@ -162,9 +164,12 @@ void Im_client::listenToPeers(void * me)	{
 	const int bufferLength = 550;
 	char recvbuf[bufferLength];
 
+	struct sockaddr their_addr;
+
 	while(!box->closingSocketTime)	{
 		memset(recvbuf, '\0', bufferLength);
-		if(recv(peerListen, recvbuf, bufferLength, 0) == SOCKET_ERROR)
+		SOCKET new_fd = accept(peerListen, &their_addr, 0);
+		if(new_fd == SOCKET_ERROR)
 		{
 			if(box->closingSocketTime)	{
 				#ifdef DEBUG
@@ -172,33 +177,40 @@ void Im_client::listenToPeers(void * me)	{
 				#endif
 				break;
 			}
-			std::cerr << "ERROR in receiving message from peer" << std::endl;	
+			std::cerr << "ERROR in accepting connection from peer" << std::endl;	
+			std::cerr<< "errno: " << WSAGetLastError()<< std::endl;
 		}
 		else	{
-			std::string msg(recvbuf);
-			#ifdef DEBUG
-			std::cout << "GOT: " << msg << std::endl <<std::endl;
-			#endif
-
-			/*
-			//Delimit messages by #. && wait for entire message??
-			int beginIndex = 0;
-			unsigned foundIndex = 0; 
-			int substrLen;
-			std::string littleMsg;
-			do{
-				foundIndex = msg.find('#', beginIndex);
-				substrLen = foundIndex - beginIndex + 1;
-				littleMsg = msg.substr(beginIndex, substrLen);
-				box->parseServerMsg(littleMsg);
-				beginIndex = foundIndex + 1;
+			if(recv(peerListen, recvbuf, bufferLength, 0) == SOCKET_ERROR)	{
+				std::cerr << "ERROR in recv msg from peer" <<
+					std::endl;
+			}
+			else	{
+				std::string msg(recvbuf);
 				#ifdef DEBUG
-				std::cout << "foundIndex: " << foundIndex; 
-				std::cout << " substrLen: " << substrLen;
-				std::cout << " MSG:: " << littleMsg; 
+				std::cout << "GOT: " << msg << std::endl <<std::endl;
 				#endif
-			} while(beginIndex < msg.size() - 1);
-			*/
+
+				/*
+				//Delimit messages by #. && wait for entire message??
+				int beginIndex = 0;
+				unsigned foundIndex = 0; 
+				int substrLen;
+				std::string littleMsg;
+				do{
+					foundIndex = msg.find('#', beginIndex);
+					substrLen = foundIndex - beginIndex + 1;
+					littleMsg = msg.substr(beginIndex, substrLen);
+					box->parseServerMsg(littleMsg);
+					beginIndex = foundIndex + 1;
+					#ifdef DEBUG
+					std::cout << "foundIndex: " << foundIndex; 
+					std::cout << " substrLen: " << substrLen;
+					std::cout << " MSG:: " << littleMsg; 
+					#endif
+				} while(beginIndex < msg.size() - 1);
+				*/
+			}
 		}
 	}
 	#ifdef DEBUG
