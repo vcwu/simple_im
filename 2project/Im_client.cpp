@@ -13,7 +13,7 @@
 #include <iostream>
 #include <iomanip>	//setw, setfill
 #include <sstream>
-Im_client::Im_client() 	{	
+Im_client::Im_client() : userName(""), serverListener("tcp") 	{	
 		userName = "";
 		closingSocketTime = false;
 		InitializeCriticalSection(&critSec);
@@ -34,33 +34,18 @@ SOCKET Im_client::passiveSock(std::string service, std::string transport, int ql
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
 	sin.sin_addr.s_addr = INADDR_ANY;
+	sin.sin_port = htons((u_short)atoi(service.c_str()));
 
-    /* Map service name to port number */
-	if ( pse = getservbyname(service.c_str(), transport.c_str()) )
-		sin.sin_port = htons(ntohs((u_short)pse->s_port));
-	else if ( (sin.sin_port = htons((u_short)atoi(service.c_str()))) == 0 )
-		printf("can't get \"%s\" service entry\n", service);
-
-    /* Map protocol name to protocol number */
-	if ( (ppe = getprotobyname(transport.c_str())) == 0)
-		printf("can't get \"%s\" protocol entry\n", transport);
-
-    /* Use protocol to choose a socket type */
-	if (strcmp(transport.c_str(), "udp") == 0)
-		type = SOCK_DGRAM;
-	else
-		type = SOCK_STREAM;
-
-    /* Allocate a socket */
-	s = socket(PF_INET, type, ppe->p_proto);
+	/* Allocate a socket */
+	s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (s < 0)
 		printf("can't create socket: %s\n", strerror(errno));
 
-    /* Bind the socket */
+    	/* Bind the socket */
 	if (bind(s, (struct sockaddr *)&sin, sizeof(sin)) < 0)
 		printf("can't bind to %s port: %s\n", service,
 			strerror(errno));
-	if (type == SOCK_STREAM && listen(s, qlen) < 0)
+	if ( listen(s, qlen) == SOCKET_ERROR)
 		printf("can't listen on %s port: %s\n", service,
 			strerror(errno));
 	#ifdef DEBUG
@@ -75,19 +60,21 @@ void Im_client::startup(int backlog, std::string serverName, std::string
 		portNum, std::string port){
 	//Start listening for peer requests.
 //	peerListener.startListening(backlog, port);
-	peerListener.setSocket(passiveSock(port, "tcp", backlog));
-//	_beginthread(listenToPeers, 0, (void *) this);	
+//	peerListener.setSocket(passiveSock(port, "tcp", backlog));
+
+	peerListener = passiveSock(port, "tcp", backlog);
+	_beginthread(listenToPeers, 0, (void *) this);	
 
 	#ifdef DEBUG
 	std::cout << "Started up peer listener on socket: " <<
-		peerListener.getSocket() <<std::endl;;
+		peerListener <<std::endl;;
 	#endif
 
 	//Connect to server and start listening.
-	if(!serverListener.connectToHost("tcp", serverName, portNum))	{
+	if(!serverListener.connectToHost(serverName, portNum))	{
 		std::cerr << "Unable to connect to Server. Goodbye." << std::endl;
-		WSACleanup();
-		exit(1);
+		//WSACleanup();
+		return;
 	}
 	_beginthread(listenToServer, 0, (void *) this);	
 
@@ -118,7 +105,8 @@ void Im_client::shutdown()	{
 
 	std::cout << "Threads all ok to shutdown! " << std::endl;
 
-	peerListener.~MySock();
+	//peerListener.~MySock();
+	closesocket(peerListener);
 	serverListener.~MySock();
 }
 
@@ -126,11 +114,14 @@ void Im_client::shutdown()	{
  * Sends a log on message to server. 
  */
 
-void Im_client::logOn(std::string name)	{
+void Im_client::logOn(std::string name, std::string portListen)	{
 	std::cout << "Signing in as " << name << std::endl;
 
+	userName = name;
+	u_short port = atoi(portListen.c_str());
+	
 	std::stringstream ss;
-	ss << "1;" << name << ";" << std::setw(5) << std::setfill('0') << peerListener.getLocalPort() << "#";
+	ss << "1;" << name << ";" << std::setw(5) << std::setfill('0') << port << "#";
 	std::string message = ss.str();
 	
 	serverListener.sendMsg(message);
@@ -162,7 +153,7 @@ void Im_client::listenToServer(void * me)	{
 				#endif
 				break;
 			}
-			std::cerr << "ERROR in receiving message from server" << std::endl;	
+			std::cerr << "ERROR in receiving 	getline(std::cin, buddy);message from server" << std::endl;	
 			std::cerr << "Error# " << WSAGetLastError() <<
 				std::endl;
 		}
@@ -177,19 +168,25 @@ void Im_client::listenToServer(void * me)	{
 			unsigned foundIndex = 0; 
 			int substrLen;
 			std::string littleMsg;
-			do{
+			bool hasMore = true;
+			while(hasMore){
 				foundIndex = msg.find('#', beginIndex);
-				//sometimes foundIndex gets to be waaaaay out. ??
+				if(foundIndex > 512 || foundIndex == std::string::npos)	{
+					hasMore = false;
+				}
 				substrLen = foundIndex - beginIndex + 1;
 				littleMsg = msg.substr(beginIndex, substrLen);
 				box->parseServerMsg(littleMsg);
 				beginIndex = foundIndex + 1;
+				if(beginIndex < msg.size() -1)	{
+					hasMore = false;
+				}
 				#ifdef DEBUG
 				std::cout << "foundIndex: " << foundIndex; 
 				std::cout << " substrLen: " << substrLen;
 				std::cout << " MSG:: " << littleMsg; 
 				#endif
-			} while(beginIndex < msg.size() - 1 && !(foundIndex>550));
+			} 
 		}
 	}
 	#ifdef DEBUG
@@ -211,7 +208,7 @@ void Im_client::listenToServer(void * me)	{
  */
 void Im_client::listenToPeers(void * me)	{
 	Im_client* box = (Im_client*)me;
-	SOCKET peerListen = box->peerListener.getSocket();
+	SOCKET peerListen = box->peerListener;
 
 	#ifdef DEBUG
 	std::cout << "FROM THREAD 2: Listening for peer messages on socket"
@@ -226,7 +223,8 @@ void Im_client::listenToPeers(void * me)	{
 	int addr_len = sizeof( their_addr);
 	while(!box->closingSocketTime)	{
 		memset(recvbuf, '\0', bufferLength);
-		SOCKET new_fd = accept(peerListen, &their_addr, &addr_len);
+//		SOCKET new_fd = accept(peerListen, &their_addr, &addr_len);
+		SOCKET new_fd = accept(peerListen, NULL, NULL);
 		if(new_fd == SOCKET_ERROR)
 		{
 			if(box->closingSocketTime)	{
@@ -239,16 +237,35 @@ void Im_client::listenToPeers(void * me)	{
 			std::cerr<< "errno: " << WSAGetLastError()<< std::endl;
 		}
 		else	{
-			if(recv(peerListen, recvbuf, bufferLength, 0) == SOCKET_ERROR)	{
+			if(recv(new_fd, recvbuf, bufferLength, 0) == SOCKET_ERROR)	{
 				std::cerr << "ERROR in recv msg from peer" <<
 					std::endl;
+				std::cerr << "Errno: " << WSAGetLastError() << std::endl;
 			}
 			else	{
 				std::string msg(recvbuf);
 				#ifdef DEBUG
 				std::cout << "GOT: " << msg << std::endl <<std::endl;
 				#endif
-
+		
+				std::stringstream ss(msg);
+				std::string codeStr, count;
+				std::getline(ss, codeStr,';');
+				
+				int code = atoi(codeStr.c_str());
+	
+				if(code == SEND_MSG )	{
+					std::string myName, buddyName, message;
+					std::getline(ss, myName, '\n');
+					std::getline(ss, buddyName, '\n');
+					std::getline(ss, message, '#');
+					
+					#ifdef DEBUG
+					std::cout << "Message for" << myName << " from: " << buddyName << "\n" << message << " end message" << std::endl;
+					#endif
+				}
+				
+				closesocket(new_fd);
 				/*
 				//Delimit messages by #. && wait for entire message??
 				int beginIndex = 0;
@@ -288,7 +305,6 @@ void Im_client::listenToPeers(void * me)	{
 	#endif 
 
 }
-
 
 
 
@@ -380,13 +396,14 @@ void Im_client::sendMessage()	{
 	std::string buffer;
 	std::string message, buddy;
 	std::cout << "Recipient: ";
-	std::cin >> buddy;
+//	std::cin >> buddy;
+	getline(std::cin, buddy);
 	std::cout << "Message: ";
-	std::cin >> message;
-
+	//std::cin >> message;
+	getline(std::cin, message);	
 	std::stringstream ss;
-	ss << SEND_MSG << ";" << userName << "/n"
-		<< buddy << "/n" << message << "#"; 
+	ss << SEND_MSG << ";" << userName << "\n"
+		<< buddy << "\n" << message << "#"; 
 	
 	
 	if(!sendToBuddy(buddy, ss.str()))	{
@@ -442,7 +459,7 @@ bool Im_client::sendToBuddy(std::string buddy, std::string msg)	{
 		MySock buddy;
 		std::string ip = it->second.first;
 		std::string port = it->second.second;
-		if(buddy.connectToHost("tcp", ip, port))	{
+		if(buddy.connectToHost( ip, port))	{
 			buddy.sendMsg(msg);
 		}
 		else	{

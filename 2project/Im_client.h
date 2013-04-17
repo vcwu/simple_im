@@ -24,8 +24,10 @@ class Im_client	{
 		static const char DELIMETER = '#';
 
 		//MySockets
-		MySock peerListener;
+//		MySock peerListener;
+		SOCKET peerListener;
 		MySock serverListener;
+		
 		
 		std::string userName;
 		BuddyLog log;
@@ -60,8 +62,9 @@ class Im_client	{
 		void displayMenu();
 		void startup(int backlog, std::string serverName, std::string
 				portNum, std::string listeningPort);
-		void logOn(std::string name);
+		void logOn(std::string name, std::string listeningPort);
 		void parseServerMsg(std::string littleMsg);
+
 		void shutdown();
 		bool sendToBuddy(std::string buddy, std::string msg);
 
