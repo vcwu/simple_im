@@ -14,6 +14,7 @@
 #include <sstream>	//for sending msgs  - change??
 #include <string>
 #include <map>
+#include <vector>
 #include "MySock.h"
 class Im_client	{
 
@@ -29,6 +30,8 @@ class Im_client	{
 		MySock serverListener;
 		
 		
+		std::vector<SOCKET> talkingTo;
+
 		std::string userName;
 		BuddyLog log;
 
@@ -64,9 +67,10 @@ class Im_client	{
 				portNum, std::string listeningPort);
 		void logOn(std::string name, std::string listeningPort);
 		void parseServerMsg(std::string littleMsg);
+		std::string findFiles();
 
 		void shutdown();
-		bool sendToBuddy(std::string buddy, std::string msg);
+		bool sendToBuddy(MySock &who, std::string buddy, std::string msg);
 
 		//User functions.
 		void sendMessage();

@@ -261,30 +261,26 @@ void Im_client::listenToPeers(void * me)	{
 					std::getline(ss, message, '#');
 					
 					#ifdef DEBUG
-					std::cout << "Message for" << myName << " from: " << buddyName << "\n" << message << " end message" << std::endl;
+					std::cout << "Message from: " << buddyName << "\n" << message <<  std::endl;
 					#endif
+				}
+				else if(code == FILE_LIST)	{
+					
+					std::string message = box->findFiles();
+					#ifdef DEBUG
+					std::cout << "Preparing to send on socket " << peerListen << std::endl;
+					std::cout << "message: " << message << std::endl;
+					#endif
+
+					int bytes_sent = send(peerListen, message.c_str(), strlen(message.c_str() ), 0);
+					if(bytes_sent == SOCKET_ERROR)	{
+						std::cerr << "Error in sending message\n" << message <<
+							std::endl;
+					}
+											
 				}
 				
 				closesocket(new_fd);
-				/*
-				//Delimit messages by #. && wait for entire message??
-				int beginIndex = 0;
-				unsigned foundIndex = 0; 
-				int substrLen;
-				std::string littleMsg;
-				do{
-					foundIndex = msg.find('#', beginIndex);
-					substrLen = foundIndex - beginIndex + 1;
-					littleMsg = msg.substr(beginIndex, substrLen);
-					box->parseServerMsg(littleMsg);
-					beginIndex = foundIndex + 1;
-					#ifdef DEBUG
-					std::cout << "foundIndex: " << foundIndex; 
-					std::cout << " substrLen: " << substrLen;
-					std::cout << " MSG:: " << littleMsg; 
-					#endif
-				} while(beginIndex < msg.size() - 1);
-				*/
 			}
 		}
 	}
@@ -307,6 +303,39 @@ void Im_client::listenToPeers(void * me)	{
 }
 
 
+/*
+ *Find Files - returns properly formatted msg for listing files
+ */
+std::string Im_client::findFiles()	{
+
+
+	HANDLE hFind;
+	WIN32_FIND_DATA data;
+
+	std::stringstream msg;
+	std::stringstream fileList;
+
+	int fileCount = 0;
+
+	hFind = FindFirstFile("files\\*", &data);
+	std::cout << "Starting " << std::endl;
+	if(hFind!= INVALID_HANDLE_VALUE)	{
+		do	{
+			if(!(strcmp(data.cFileName, ".")==0) && !(strcmp(data.cFileName, "..")==0))	{
+				printf("%s\n", data.cFileName);
+
+				fileList << data.cFileName << "\n";
+				fileCount++;
+			}
+			
+		}while(FindNextFile(hFind, &data));
+		FindClose(hFind);
+		std::string list = fileList.str();
+		list = list.substr(0, list.length() -1);	//removing last \n
+		msg << "ack;" << fileCount << "\n" << list << "#";
+	}
+	return msg.str();
+}
 
 /*
  * Given a message, if it is a type 4, will parse active user list and update
@@ -405,8 +434,9 @@ void Im_client::sendMessage()	{
 	ss << SEND_MSG << ";" << userName << "\n"
 		<< buddy << "\n" << message << "#"; 
 	
-	
-	if(!sendToBuddy(buddy, ss.str()))	{
+
+	MySock who;
+	if(!sendToBuddy(who, buddy, ss.str()))	{
 		std::cout << " Unable to send to " << buddy << std::endl;
 	}
 	else	{
@@ -425,13 +455,26 @@ void Im_client::getFileNames()	{
 	std::stringstream ss;
 	ss << FILE_LIST << ";fileList/n";
 
-	if(!sendToBuddy(buddy, ss.str()))	{
+	const int bufferLength = 550;
+	char recvbuf[bufferLength];
+	memset(recvbuf, '\0', bufferLength);
+
+	MySock who;
+	if(!sendToBuddy(who, buddy, ss.str()))	{
 		std::cout << " Unable to send to " << buddy << std::endl;
+	/*	
+		if(recv(s, recvbuf, bufferLength, 0) != SOCKET_ERROR)	{
+			std::string list(recvbuf);
+			std::cout << list << std::endl;
+		}
+	
+	*/
 	}
 	else	{
 		std::cout << "File list requested from " << buddy << std::endl;
 	}
 
+		
 }
 
 /*
@@ -448,7 +491,7 @@ void Im_client::downloadFile()	{
 /**
  * sendToBuddy
  */
-bool Im_client::sendToBuddy(std::string buddy, std::string msg)	{
+bool Im_client::sendToBuddy(MySock& who, std::string buddy, std::string msg)	{
 	BuddyLog::iterator it;
 	it = log.find(buddy);
 	if(it == log.end())	{
@@ -456,11 +499,10 @@ bool Im_client::sendToBuddy(std::string buddy, std::string msg)	{
 		return false;
 	}
 	else	{
-		MySock buddy;
 		std::string ip = it->second.first;
 		std::string port = it->second.second;
-		if(buddy.connectToHost( ip, port))	{
-			buddy.sendMsg(msg);
+		if(who.connectToHost( ip, port))	{
+			who.sendMsg(msg);
 		}
 		else	{
 			return false;
