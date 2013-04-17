@@ -272,10 +272,11 @@ void Im_client::listenToPeers(void * me)	{
 					std::cout << "message: " << message << std::endl;
 					#endif
 
-					int bytes_sent = send(peerListen, message.c_str(), strlen(message.c_str() ), 0);
+					int bytes_sent = send(new_fd, message.c_str(), strlen(message.c_str() ), 0);
 					if(bytes_sent == SOCKET_ERROR)	{
 						std::cerr << "Error in sending message\n" << message <<
 							std::endl;
+						std::cerr << "Errno: " << WSAGetLastError() << std::endl;
 					}
 											
 				}
@@ -462,16 +463,17 @@ void Im_client::getFileNames()	{
 	MySock who;
 	if(!sendToBuddy(who, buddy, ss.str()))	{
 		std::cout << " Unable to send to " << buddy << std::endl;
-	/*	
-		if(recv(s, recvbuf, bufferLength, 0) != SOCKET_ERROR)	{
+		
+	}
+	else	{
+		std::cout << "File list requested from " << buddy << std::endl;
+		
+		if(recv(who.getSocket(), recvbuf, bufferLength, 0) != SOCKET_ERROR)	{
 			std::string list(recvbuf);
 			std::cout << list << std::endl;
 		}
 	
-	*/
-	}
-	else	{
-		std::cout << "File list requested from " << buddy << std::endl;
+
 	}
 
 		
