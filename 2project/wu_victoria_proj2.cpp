@@ -31,7 +31,7 @@
 
 #define WSVERS MAKEWORD(2,0)	//Win sock version.
 #define BACKLOG 5
-#define LISTEN_PORT 65432
+//#define LISTEN_PORT "65501"
 //Compiled using Visual Studio's command prompt
 #pragma comment(lib, "wsock32.lib")	//link winsock li
 #pragma comment(lib, "libcmt.lib")	//for process.h
@@ -39,7 +39,9 @@
 
 int main(int argc, char **argv)	{
 
-		
+	
+	std::string LISTEN_PORT = "65501";
+
 	//Take in user specified port num, server name.
 	std::string serverName;
 	std::string portNum;
@@ -50,7 +52,16 @@ int main(int argc, char **argv)	{
 		#ifdef DEBUG
 		std::cout << "Server ip: " << serverName << "portNum: " <<
 			portNum <<std::endl;
+		std::cout << "Listening port : " << LISTEN_PORT << std::endl;
 		#endif 
+	}
+	else if(argc == 2)	{
+		LISTEN_PORT = argv[1];
+		#ifdef COTTER
+		serverName = "134.193.128.197";
+		portNum = "3456";
+		std::cout << "Listening port : " << LISTEN_PORT << std::endl;
+		#endif
 	}
 	else	{
 		#ifdef COTTER
@@ -79,7 +90,7 @@ int main(int argc, char **argv)	{
 	std::cout << "What is your username? ";
 	std::cin >> name;
 
-	client.logOn(name);
+	client.logOn(name, LISTEN_PORT);
 
 	
 	std::string input = " ";
