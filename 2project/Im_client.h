@@ -29,8 +29,11 @@ class Im_client	{
 		SOCKET peerListener;
 		MySock serverListener;
 		
-		
-		std::vector<SOCKET> talkingTo;
+	
+		//file download stuff
+		//can only handle one file transfer at at time
+		UsrInfo requestDownload;	//client side
+		std::vector<u_short> fileStuff;		//server side
 
 		std::string userName;
 		BuddyLog log;
@@ -57,10 +60,11 @@ class Im_client	{
 			FILE_DL
 		};
 
-		//listener functions for threads
+		//threads functions yay
 		static void listenToServer(void* me);
 		static void listenToPeers(void* me);
-	
+		static void requestFile(void* me);
+		static void sendFile(void* me);
 		//Backend stuff.
 		void displayMenu();
 		void startup(int backlog, std::string serverName, std::string
@@ -68,7 +72,7 @@ class Im_client	{
 		void logOn(std::string name, std::string listeningPort);
 		void parseServerMsg(std::string littleMsg);
 		std::string findFiles();
-
+		
 		void shutdown();
 		bool sendToBuddy(MySock &who, std::string buddy, std::string msg);
 

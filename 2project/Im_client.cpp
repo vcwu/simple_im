@@ -11,6 +11,7 @@
 #include <utility>	//make pair
 #include <map>		//buddy log
 #include <iostream>
+#include <fstream>
 #include <iomanip>	//setw, setfill
 #include <sstream>
 Im_client::Im_client() : userName(""), serverListener("tcp") 	{	
@@ -263,6 +264,7 @@ void Im_client::listenToPeers(void * me)	{
 					#ifdef DEBUG
 					std::cout << "Message from: " << buddyName << "\n" << message <<  std::endl;
 					#endif
+					closesocket(new_fd);
 				}
 				else if(code == FILE_LIST)	{
 					
@@ -279,9 +281,20 @@ void Im_client::listenToPeers(void * me)	{
 						std::cerr << "Errno: " << WSAGetLastError() << std::endl;
 					}
 											
+					closesocket(new_fd);
+				}
+				else if(code == FILE_DL)	{
+					std::string fileName; 
+					std::getline(ss, fileName, '#');
+					
+					
+					box->fileStuff.push_back(new_fd);
+
+					//FIle Download Time!
+					_beginthread(sendFile, 0, (void *) me);	
+					//TODO
 				}
 				
-				closesocket(new_fd);
 			}
 		}
 	}
@@ -302,6 +315,19 @@ void Im_client::listenToPeers(void * me)	{
 	#endif 
 
 }
+
+/*
+ *sendFile
+ * thread function. sends away a file.
+ */
+ void Im_client::sendFile(void* me)	{
+	Im_client* box = (Im_client*)me;
+
+	//check to see if file exists
+	//open file
+	//send
+	//close file, close connection
+ }
 
 
 /*
@@ -481,14 +507,90 @@ void Im_client::getFileNames()	{
 
 /*
  * downloadFile
+ * from user interface
  */
+
 void Im_client::downloadFile()	{
 	std::cout << "let's download a file - yohoo! " << std::endl;
 	//Thread time! Yeah!
-	//
+
+	std::string buddy, fileName;
+	std::cout << "Who would you like to download a file from? ";
+	std::cin >> buddy;
+	std::cout << "What file would you like to download?";
+	std::cin >> fileName;
+
+	requestDownload.first = buddy;
+	requestDownload.second = fileName;
+	std::cout << "Requesting file. " << std::endl;
+	_beginthread(requestFile, 0, (void *) this);	
 }
 
 
+/*
+ * Request file
+ * Client side
+ */
+void Im_client::requestFile(void * me)	{
+	Im_client* box = (Im_client*)me;
+	UsrInfo req = box->requestDownload;		
+	
+
+	MySock who;
+	//set timeout option
+	struct timeval tv;
+	tv.tv_sec = 5;
+	tv.tv_usec = 0;
+	setsockopt(who.getSocket(), SOL_SOCKET, SO_RCVTIMEO, (char *) &tv, sizeof(struct timeval));
+
+
+	//Sending init message
+	std::string msg = "6;" + req.second + "#";
+	box->sendToBuddy(who, req.first, msg);
+
+	//huge recv block
+	const int bufferLength = 550;
+	char recvbuf[bufferLength];
+	memset(recvbuf, '\0', bufferLength);
+
+	std::fstream fout;
+	fout.open(msg);
+	bool fileGood = true;
+	while(fileGood)	{
+		if(recv(who.getSocket(), recvbuf, bufferLength, 0) == SOCKET_ERROR)	{
+			if(box->closingSocketTime)	{
+				#ifdef DEBUG
+				std::cout << "From THREAD 3 file req: Time for Shutdown!! " << std::endl; 
+				#endif
+				//break;
+				
+			}
+			std::cerr << "Error in downloading file." << std::endl;
+			std::cerr << "Error# " << WSAGetLastError() <<
+				std::endl;
+			fileGood = false;
+		}
+		else	{
+			//strip out header
+			std::string chunk(recvbuf);
+			int index = chunk.find('\n');
+			chunk = chunk.substr(index+1, std::string::npos);
+
+			#ifdef DEBUG
+			std::cout << "GOT A CHUNK! " << std::endl;
+			std::cout << chunk << std::endl;
+			#endif
+			
+			//write out chunk
+			fout << chunk;
+
+			//check if it's last chunk
+			if(chunk.length() < 512)
+				fileGood = false;
+		}
+	}
+	fout.close();
+}
 
 /**
  * sendToBuddy
