@@ -116,6 +116,7 @@ int main(int argc, char **argv)	{
 	
 	std::cout << " Bye! " << std::endl;
 	client.shutdown();
+	std::cout << "Finished shutting down. Please press any key to exit. " << std::endl;
 	std::cin >> name;
 
 	WSACleanup();
