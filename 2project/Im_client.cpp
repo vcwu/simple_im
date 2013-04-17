@@ -13,8 +13,8 @@
 #include <iostream>
 #include <iomanip>	//setw, setfill
 #include <sstream>
-Im_client::Im_client() : userName(""), peerListener("tcp"),
-	serverListener("tcp")	{
+Im_client::Im_client() 	{	
+		userName = "";
 		closingSocketTime = false;
 		InitializeCriticalSection(&critSec);
 		InitializeConditionVariable(&threadsDown);
@@ -24,24 +24,78 @@ Im_client::~Im_client()	{
 
 }
 
-void Im_client::startup(int backlog, std::string serverName, std::string
-		portNum, u_short port){
-	//Start listening for peer requests.
+
+SOCKET Im_client::passiveSock(std::string service, std::string transport, int qlen)	{
+	struct servent	*pse;	/* pointer to service information entry	*/
+	struct protoent *ppe;	/* pointer to protocol information entry*/
+	struct sockaddr_in sin;	/* an Internet endpoint address		*/
+	int	s, type;	/* socket descriptor and socket type	*/
+
+	memset(&sin, 0, sizeof(sin));
+	sin.sin_family = AF_INET;
+	sin.sin_addr.s_addr = INADDR_ANY;
+
+    /* Map service name to port number */
+	if ( pse = getservbyname(service.c_str(), transport.c_str()) )
+		sin.sin_port = htons(ntohs((u_short)pse->s_port));
+	else if ( (sin.sin_port = htons((u_short)atoi(service.c_str()))) == 0 )
+		printf("can't get \"%s\" service entry\n", service);
+
+    /* Map protocol name to protocol number */
+	if ( (ppe = getprotobyname(transport.c_str())) == 0)
+		printf("can't get \"%s\" protocol entry\n", transport);
+
+    /* Use protocol to choose a socket type */
+	if (strcmp(transport.c_str(), "udp") == 0)
+		type = SOCK_DGRAM;
+	else
+		type = SOCK_STREAM;
+
+    /* Allocate a socket */
+	s = socket(PF_INET, type, ppe->p_proto);
+	if (s < 0)
+		printf("can't create socket: %s\n", strerror(errno));
+
+    /* Bind the socket */
+	if (bind(s, (struct sockaddr *)&sin, sizeof(sin)) < 0)
+		printf("can't bind to %s port: %s\n", service,
+			strerror(errno));
+	if (type == SOCK_STREAM && listen(s, qlen) < 0)
+		printf("can't listen on %s port: %s\n", service,
+			strerror(errno));
 	#ifdef DEBUG
-	std::cout << "Starting up peer listener on socket: " <<
+	std::cout << "Successfully created passive socket sock: " <<s << " port: " << service << std::endl;
+	#endif
+	return s;
+}
+
+
+
+void Im_client::startup(int backlog, std::string serverName, std::string
+		portNum, std::string port){
+	//Start listening for peer requests.
+//	peerListener.startListening(backlog, port);
+	peerListener.setSocket(passiveSock(port, "tcp", backlog));
+//	_beginthread(listenToPeers, 0, (void *) this);	
+
+	#ifdef DEBUG
+	std::cout << "Started up peer listener on socket: " <<
 		peerListener.getSocket() <<std::endl;;
 	#endif
-	peerListener.startListening(backlog, port);
-	_beginthread(listenToPeers, 0, (void *) this);	
+
+	//Connect to server and start listening.
+	if(!serverListener.connectToHost("tcp", serverName, portNum))	{
+		std::cerr << "Unable to connect to Server. Goodbye." << std::endl;
+		WSACleanup();
+		exit(1);
+	}
+	_beginthread(listenToServer, 0, (void *) this);	
 
 	#ifdef DEBUG
 	std::cout << "Starting up connection to server on socket: " <<
 		serverListener.getSocket() << std::endl;
 	#endif
 
-	//Connect to server and start listening.
-	serverListener.connectToHost(serverName, portNum);
-	_beginthread(listenToServer, 0, (void *) this);	
 }
 
 /*
@@ -125,6 +179,7 @@ void Im_client::listenToServer(void * me)	{
 			std::string littleMsg;
 			do{
 				foundIndex = msg.find('#', beginIndex);
+				//sometimes foundIndex gets to be waaaaay out. ??
 				substrLen = foundIndex - beginIndex + 1;
 				littleMsg = msg.substr(beginIndex, substrLen);
 				box->parseServerMsg(littleMsg);
@@ -387,7 +442,7 @@ bool Im_client::sendToBuddy(std::string buddy, std::string msg)	{
 		MySock buddy;
 		std::string ip = it->second.first;
 		std::string port = it->second.second;
-		if(buddy.connectToHost(ip, port))	{
+		if(buddy.connectToHost("tcp", ip, port))	{
 			buddy.sendMsg(msg);
 		}
 		else	{

@@ -26,7 +26,7 @@ class Im_client	{
 		//MySockets
 		MySock peerListener;
 		MySock serverListener;
-
+		
 		std::string userName;
 		BuddyLog log;
 
@@ -35,6 +35,10 @@ class Im_client	{
 		boolean readyToShutdown;
 		CRITICAL_SECTION critSec;
 		CONDITION_VARIABLE threadsDown;
+
+		//MySock is NOT working for a passive socket.
+		//This is a crude fix, taken from Comer's code.
+		SOCKET passiveSock(std::string service, std::string transport, int qlen);
 	public:
 		Im_client();
 		~Im_client();
@@ -55,7 +59,7 @@ class Im_client	{
 		//Backend stuff.
 		void displayMenu();
 		void startup(int backlog, std::string serverName, std::string
-				portNum, u_short listeningPort);
+				portNum, std::string listeningPort);
 		void logOn(std::string name);
 		void parseServerMsg(std::string littleMsg);
 		void shutdown();
