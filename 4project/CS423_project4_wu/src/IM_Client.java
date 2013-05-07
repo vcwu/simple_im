@@ -77,6 +77,34 @@ public class IM_Client {
         LOGGER.log(Level.INFO, "Sent: {0}", msg);
         talkToServer.printf(msg);  
     }
+    
+    /**
+     * Send a message to a buddy.
+     */
+    public void sendMessage()   {
+        
+    }
+    
+    /**
+     * Get file names from a buddy.
+     */
+    public void getFileNames()  {
+        
+    }
+    
+    /**
+     * Download a file from a buddy.
+     */
+    public void downloadFile()  {
+    
+    }
+    public void displayMenu()   {
+        System.out.println("What would you like to do?");
+        System.out.println("\tSend msg to buddy (s)");
+        System.out.println("\tGet file list from buddy (f)");
+        System.out.println("\tDownload file from buddy (d)");
+        System.out.println("\tQuit (q)");
+    }
 }
 
 
