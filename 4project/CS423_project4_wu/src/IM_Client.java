@@ -1,5 +1,6 @@
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
@@ -20,7 +21,7 @@ public class IM_Client {
     
     //Vars
     //--------------------------------------------
-    private HashMap<String, UsrAddress> buddyLog;
+    private HashMap<String, InetSocketAddress> buddyLog;
     private ServerSocket peerListen;
     private Thread peerListener_t;
     
@@ -50,7 +51,9 @@ public class IM_Client {
             LOGGER.info(String.format("PeerListener on port %d backlog %d", peerListenPortNum, backLog));
             
             //Start listening for server.
-            serverTalker = new Socket(remoteIP, remotePort);
+            serverTalker = new Socket();
+            serverTalker.connect(new InetSocketAddress(remoteIP, remotePort), 1000);
+            
             serverListener_t = new Thread(new ServerListener());
             serverListener_t.start();
             LOGGER.info(String.format("Connected to server ip: %s, port %d", remoteIP, remotePort));
@@ -58,17 +61,8 @@ public class IM_Client {
         } catch (IOException ex) {
             LOGGER.log(Level.SEVERE, null, ex);
         }
+     
     }
 }
 
 
-//Stores a buddy's IP and port.
-class UsrAddress  {
-    public String ip;
-    public String port;
-    
-    public UsrAddress() {
-        ip = "";
-        port = "";
-    }
-}
