@@ -17,24 +17,28 @@ public class cs423_project4_wu {
     public static void main(String[] args) {
         
         String serverName = "134.193.128.197";
-        String portNum = "3456";
+        int portNum = 3456;
         
-        String LISTEN_PORT = "65501";
-        
+        int listenPort = 65501;
+        int backLog = 5;
         
         //specify server and port
         if(args.length == 2)    {
             serverName = args[0];
-            portNum = args[1];           
+            portNum = Integer.parseInt(args[1]);           
         }
         //default to Cotter's server, port
         else if(args.length == 1)   {
-            LISTEN_PORT = args[0];
+            listenPort = Integer.parseInt(args[0]);
         }
         else    {  
             System.out.println("No server name and port num specified. Setting to default.");
         }
-        String cmdLineArgs = String.format("Server IP: %s PortNum: %s ListenPort: %s", serverName, portNum, LISTEN_PORT);
+        String cmdLineArgs = String.format("Server IP: %s PortNum: %s ListenPort: %s", serverName, portNum, listenPort);
         LOGGER.info(cmdLineArgs);
+        
+        IM_Client cl = new IM_Client();
+        cl.startup(serverName, portNum, listenPort, backLog);
+        
     }
 }
