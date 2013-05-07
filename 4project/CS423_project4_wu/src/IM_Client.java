@@ -1,5 +1,6 @@
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -22,11 +23,15 @@ public class IM_Client {
     //Vars
     //--------------------------------------------
     private HashMap<String, InetSocketAddress> buddyLog;
+    private String username;
+    
     private ServerSocket peerListen;
     private Thread peerListener_t;
     
+    
     private Socket serverTalker;
     private Thread serverListener_t;
+    private PrintWriter talkToServer;
     
     
     //Methods
@@ -53,6 +58,7 @@ public class IM_Client {
             //Start listening for server.
             serverTalker = new Socket();
             serverTalker.connect(new InetSocketAddress(remoteIP, remotePort), 1000);
+            talkToServer = new PrintWriter(serverTalker.getOutputStream(), true);   //I"ll need to close this...
             
             serverListener_t = new Thread(new ServerListener());
             serverListener_t.start();
@@ -62,6 +68,14 @@ public class IM_Client {
             LOGGER.log(Level.SEVERE, null, ex);
         }
      
+    }
+    
+    public void logOn(String name)  { 
+        username = name;
+            
+        String msg = String.format("1;%s;%05d#", username, peerListen.getLocalPort());
+        LOGGER.log(Level.INFO, "Sent: {0}", msg);
+        talkToServer.printf(msg);  
     }
 }
 
