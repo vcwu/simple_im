@@ -5,6 +5,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
+import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -60,7 +61,7 @@ public class IM_Client {
             serverTalker.connect(new InetSocketAddress(remoteIP, remotePort), 1000);
             talkToServer = new PrintWriter(serverTalker.getOutputStream(), true);   //I"ll need to close this...
             
-            serverListener_t = new Thread(new ServerListener());
+            serverListener_t = new Thread(new ServerListener(this));
             serverListener_t.start();
             LOGGER.info(String.format("Connected to server ip: %s, port %d", remoteIP, remotePort));
             
@@ -69,7 +70,11 @@ public class IM_Client {
         }
      
     }
-    
+
+    public void shutdown()  {
+        //Gracefully shut down threads.
+        //Gracefully shut down ServerTalker socket, and PeerListen socket.??
+    }
     public void logOn(String name)  { 
         username = name;
             
@@ -82,7 +87,15 @@ public class IM_Client {
      * Send a message to a buddy.
      */
     public void sendMessage()   {
+        String recipient, msg;
+        System.out.println("Recipient: ");
+        Scanner in = new Scanner(System.in);
+        recipient = in.next();
+        System.out.println("Message: ");
+        msg = in.next();
         
+        String out = String.format("2;%s\n%s\n%s#", username, recipient, msg);
+        //actually send
     }
     
     /**
