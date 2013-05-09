@@ -38,11 +38,13 @@ public class PeerListener implements Runnable {
             //need better ending case
             LOGGER.info("Entering while loop");
             Socket talker = null;
+            PeerConnection peer = null;
             while(true) {
                 talker = listen.accept();
-                handleConnection(talker);
+                peer = new PeerConnection(talker);
+                Thread t = new Thread(peer);
+                t.start();
                 LOGGER.info("GOT a talker!!");
-                
             }
         }   //catch socket close exceptiON?? I'm so confused D: - 
             //SocketException socket closed, when quitting
@@ -50,11 +52,27 @@ public class PeerListener implements Runnable {
             LOGGER.log(Level.SEVERE, null, ex);
         }
    }
+ 
+}
+
+
+class PeerConnection implements Runnable    {
     
-   public void handleConnection(Socket incoming)    {
+    
+    private static Logger LOGGER = Logger.getLogger("CS423_Project4");
+    
+    private Socket incoming;
+    private PrintWriter outputToSocket;
+    private Scanner inputFromSocket;
+    
+    public PeerConnection(Socket talker) {
+        incoming = talker;
+    }
+    
+    public void run()    {
         try {
-            PrintWriter outputToSocket = new PrintWriter(incoming.getOutputStream(), true);
-            Scanner inputFromSocket = new Scanner(new BufferedReader(new InputStreamReader(incoming.getInputStream())));
+            outputToSocket = new PrintWriter(incoming.getOutputStream(), true);
+            inputFromSocket = new Scanner(new BufferedReader(new InputStreamReader(incoming.getInputStream())));
             inputFromSocket.useDelimiter("#");
             
             
@@ -69,11 +87,11 @@ public class PeerListener implements Runnable {
                     break;
                 case ('5'):
                     System.out.println("File list requested.");
-                    sendFileList(outputToSocket);
+                    sendFileList();
                     break;
                 case('6'):
                     System.out.println("File requested");
-                    //sendFile();
+                    sendFile();
                     break;
             }
             
@@ -84,19 +102,10 @@ public class PeerListener implements Runnable {
         } catch (IOException ex)    {
             //stuff
             LOGGER.log(Level.SEVERE, null ,ex);
-        } 
-        
-   }
-   
-   public void sendFileList(PrintWriter outputToSocket) {
-       System.out.println("look at the pretty FILES!");
-       String payload = getFileListPayload();
-       
-       LOGGER.log(Level.INFO, "Sending fileList{0}", payload);
-       outputToSocket.print(payload);
-   }
-   
-   /*
+        }
+    }
+    
+    /*
     * Find the files.
     * Then, make the message to get ready for sending
     */
@@ -116,39 +125,17 @@ public class PeerListener implements Runnable {
        String payload = String.format("ack;%d\n%s", numFiles, list.toString());
        return payload;
    }
- 
+    
+   public void sendFileList() {
+       System.out.println("look at the pretty FILES!");
+       String payload = getFileListPayload();
+       
+       LOGGER.log(Level.INFO, "Sending fileList{0}", payload);
+       outputToSocket.print(payload);
+   }
+   
+   public void sendFile()   {
+       
+   }
+   
 }
-
-
-
-
-/*
- * Handles all communication with a peer.
- */
-/*
-class PeerConnection implements Runnable    {
-        private static Logger LOGGER = Logger.getLogger("CS423_Project4");
-        Socket incoming;
-        
-        public PeerConnection(Socket in)  {
-            incoming = in;
-        }
-        
-        public void run()   {
-            Pattern recvMsgFormat = Pattern.compile("2;(.*)\n(.*)\n(.*)"); 
-            Scanner in = new Scanner(new BufferedReader(new InputStreamReader(talker.getInputStream())));
-                in = in.useDelimiter("#");
-                String meat = in.next();
-                LOGGER.log(Level.INFO, "From peer: {0}", meat);
-                Matcher m;
-                switch(meat.charAt(0))  {
-                    case (2):
-                        
-                        m = recvMsgFormat.matcher(meat);
-                        m.matches();
-                        System.out.printf("From %s\n%s", m.group(2), m.group(3));
-                        break;
-                }
-        }
-}
-* */
