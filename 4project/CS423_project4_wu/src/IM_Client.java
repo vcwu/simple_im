@@ -1,10 +1,5 @@
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -13,6 +8,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+
+/*
+ * PROBLEMS
+ * On Quit. Cleanup nicely!! :(
+ * Peer listener is not displaying received messages... so i can't parse em D:
+ * File transfer lol.
+ * -> work on GUI... 
+ */
 
 /**
  * CS423 Project 4 Spring 2013
@@ -32,20 +35,24 @@ public class IM_Client {
     protected ConcurrentHashMap<String, InetSocketAddress> buddyLog;
     private String username;
     
-    private ServerSocket peerListen;
-    private Thread peerListener_t;
-    
+    protected Boolean done;
+    protected ServerSocket peerListen;
+    private Thread peerListener_t;  
+ 
     
     protected Socket serverTalker;
     protected Thread serverTalker_t;
     protected PrintWriter talkToServer;
     protected Scanner listenToServer;
     
+    private Scanner userInput;
     
     //Methods
     //--------------------------------------------
     public IM_Client()  {
-        buddyLog = new ConcurrentHashMap();    
+        userInput = new Scanner(System.in);
+        buddyLog = new ConcurrentHashMap();
+        done =false;
     }
     
     /**
@@ -60,7 +67,7 @@ public class IM_Client {
             //PEER TO PEER COMMUNICATION
             //----------------------------------------
             peerListen = new ServerSocket(peerListenPortNum, backLog);
-            peerListener_t = new Thread(new PeerListener());
+            peerListener_t = new Thread(new PeerListener(this));
             peerListener_t.setName("Peer Listener");
             peerListener_t.start();
             LOGGER.info(String.format("PeerListener on port %d backlog %d", peerListenPortNum, backLog));
@@ -80,7 +87,7 @@ public class IM_Client {
             LOGGER.info(String.format("Connected to server ip: %s, port %d", remoteIP, remotePort));
             
         } catch (IOException ex) {
-            LOGGER.log(Level.SEVERE, null, ex);
+            LOGGER.log(Level.SEVERE, null, ex); //need to exit if can't connect to server
         }
      
     }
@@ -91,6 +98,8 @@ public class IM_Client {
             //Gracefully shut down ServerTalker socket, and PeerListen socket.??
             talkToServer.close();
             serverTalker.close();
+            peerListen.close();
+                
         } catch (IOException ex) {
             LOGGER.log(Level.SEVERE, null, ex);
         }
@@ -105,40 +114,90 @@ public class IM_Client {
     }
     
     /**
+     * Talk to buddy 
+     * Looks for buddy in log. If exists, returns a socket. 
+     */
+    public Socket findBuddy(String recipient)   {
+        Socket talker = null;
+        if(buddyLog.containsKey(recipient)) {
+            try {
+                InetSocketAddress buddy = buddyLog.get(recipient);
+                talker = new Socket(buddy.getAddress(), buddy.getPort());
+                
+            } catch (IOException ex) {
+                LOGGER.log(Level.SEVERE, null, ex);
+            }
+        }
+       
+        return talker;
+    }
+    
+    /**
      * Send a message to a buddy.
      */
     public void sendMessage()   {
         String recipient, msg;
         System.out.println("Recipient: ");
-        Scanner in = new Scanner(System.in);
-        recipient = in.next();
+        recipient = userInput.nextLine();
         System.out.println("Message: ");
-        msg = in.next();
+        msg = userInput.nextLine();
         
-        String outmsg = String.format("2;%s\n%s\n%s#", username, recipient, msg);
-        
-        if(buddyLog.containsKey(recipient)) {
+        String payload = String.format("2;%s\n%s\n%s#", username, recipient, msg);
+        Socket talker = findBuddy(recipient);
+        if(talker != null)  {
+            BufferedReader input = null;
+            PrintWriter out = null;
             try {
-                InetSocketAddress buddy = buddyLog.get(recipient);
-                Socket talker = new Socket(buddy.getAddress(), buddy.getPort());
-                PrintWriter out = new PrintWriter(serverTalker.getOutputStream(), true);
-                out.print(outmsg);
-                System.out.println("Successfully sent message to "  + recipient);
+                input = new BufferedReader(new InputStreamReader(talker.getInputStream()));
+                out = new PrintWriter(talker.getOutputStream(), true);
+                out.print(payload);
+                out.flush();
+                System.out.println("Sent message to "  + recipient + "\n"+ payload);
+                out.close();
+                input.close();
+                talker.close();
             } catch (IOException ex) {
                 LOGGER.log(Level.SEVERE, null, ex);
-            }
+            } 
         }
         else    {
             System.out.println(recipient + " is not logged in.");
         }
-        
     }
     
     /**
      * Get file names from a buddy.
      */
     public void getFileNames()  {
+        System.out.println("Get files from: ");
+        String recipient = userInput.nextLine();
         
+        Socket talker = findBuddy(recipient);
+        if(talker != null)  {
+            String payload = "5;fileList#";
+            Scanner input = null;
+            PrintWriter out = null;
+            try {
+                input = new Scanner(new BufferedReader(new InputStreamReader(talker.getInputStream())));
+                input = input.useDelimiter("#");
+                out = new PrintWriter(talker.getOutputStream(), true);
+                out.print(payload);
+                out.flush();
+                System.out.println("Sent message to "  + recipient + "\n"+ payload);
+                
+                //get file list
+                String files = input.next();
+                System.out.println("Files available: " + files);
+                out.close();
+                input.close();
+                talker.close();
+            } catch (IOException ex) {
+                LOGGER.log(Level.SEVERE, null, ex);
+            } 
+        }
+        else    {
+            System.out.println(recipient + " is not logged in.");
+        }
     }
     
     /**
