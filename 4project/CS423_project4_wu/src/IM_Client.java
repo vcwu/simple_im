@@ -1,11 +1,15 @@
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
 import java.util.Scanner;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -14,6 +18,8 @@ import java.util.logging.Logger;
  * CS423 Project 4 Spring 2013
  * Client Server Simple IM/trivial FTP in java
  * @author victoria wu
+ * 
+ * TODO: Handle error when using multiple username
  */
 
 public class IM_Client {
@@ -23,22 +29,23 @@ public class IM_Client {
     
     //Vars
     //--------------------------------------------
-    private HashMap<String, InetSocketAddress> buddyLog;
+    protected ConcurrentHashMap<String, InetSocketAddress> buddyLog;
     private String username;
     
     private ServerSocket peerListen;
     private Thread peerListener_t;
     
     
-    private Socket serverTalker;
-    private Thread serverListener_t;
-    private PrintWriter talkToServer;
+    protected Socket serverTalker;
+    protected Thread serverTalker_t;
+    protected PrintWriter talkToServer;
+    protected Scanner listenToServer;
     
     
     //Methods
     //--------------------------------------------
     public IM_Client()  {
-        buddyLog = new HashMap();    
+        buddyLog = new ConcurrentHashMap();    
     }
     
     /**
@@ -50,19 +57,26 @@ public class IM_Client {
      */
     public void startup(String remoteIP, int remotePort, int peerListenPortNum, int backLog)   {
         try {
-            //Start listening for peer requests.
+            //PEER TO PEER COMMUNICATION
+            //----------------------------------------
             peerListen = new ServerSocket(peerListenPortNum, backLog);
             peerListener_t = new Thread(new PeerListener());
+            peerListener_t.setName("Peer Listener");
             peerListener_t.start();
             LOGGER.info(String.format("PeerListener on port %d backlog %d", peerListenPortNum, backLog));
             
-            //Start listening for server.
+            //SERVER COMMUNICATION
+            //----------------------------------------
+            
             serverTalker = new Socket();
             serverTalker.connect(new InetSocketAddress(remoteIP, remotePort), 1000);
-            talkToServer = new PrintWriter(serverTalker.getOutputStream(), true);   //I"ll need to close this...
             
-            serverListener_t = new Thread(new ServerListener(this));
-            serverListener_t.start();
+            talkToServer = new PrintWriter(serverTalker.getOutputStream(), true);   //I"ll need to close this...
+            listenToServer = new Scanner(new BufferedReader(new InputStreamReader(serverTalker.getInputStream())));
+            
+            serverTalker_t = new Thread(new ServerListener(this));
+            serverTalker_t.setName("Server Listener");
+            serverTalker_t.start();
             LOGGER.info(String.format("Connected to server ip: %s, port %d", remoteIP, remotePort));
             
         } catch (IOException ex) {
@@ -72,8 +86,15 @@ public class IM_Client {
     }
 
     public void shutdown()  {
-        //Gracefully shut down threads.
-        //Gracefully shut down ServerTalker socket, and PeerListen socket.??
+        try {
+            //Gracefully shut down threads.
+            //Gracefully shut down ServerTalker socket, and PeerListen socket.??
+            talkToServer.close();
+            serverTalker.close();
+        } catch (IOException ex) {
+            LOGGER.log(Level.SEVERE, null, ex);
+        }
+        
     }
     public void logOn(String name)  { 
         username = name;
@@ -94,8 +115,23 @@ public class IM_Client {
         System.out.println("Message: ");
         msg = in.next();
         
-        String out = String.format("2;%s\n%s\n%s#", username, recipient, msg);
-        //actually send
+        String outmsg = String.format("2;%s\n%s\n%s#", username, recipient, msg);
+        
+        if(buddyLog.containsKey(recipient)) {
+            try {
+                InetSocketAddress buddy = buddyLog.get(recipient);
+                Socket talker = new Socket(buddy.getAddress(), buddy.getPort());
+                PrintWriter out = new PrintWriter(serverTalker.getOutputStream(), true);
+                out.print(outmsg);
+                System.out.println("Successfully sent message to "  + recipient);
+            } catch (IOException ex) {
+                LOGGER.log(Level.SEVERE, null, ex);
+            }
+        }
+        else    {
+            System.out.println(recipient + " is not logged in.");
+        }
+        
     }
     
     /**
