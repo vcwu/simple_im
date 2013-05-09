@@ -1,7 +1,8 @@
 
 import java.net.InetSocketAddress;
-import java.util.HashMap;
+
 import java.util.Scanner;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -29,7 +30,7 @@ public class ServerListener implements Runnable {
     public void run()   {
         
         Scanner in = cl.listenToServer.useDelimiter("#");
-        HashMap<String, InetSocketAddress> log = cl.buddyLog;
+        ConcurrentHashMap<String, InetSocketAddress> log = cl.buddyLog;
 
         String meat, name, ip;
         int users,port;
