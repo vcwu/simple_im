@@ -29,6 +29,7 @@ public class ServerListener implements Runnable {
     
     public void run()   {
         
+        LOGGER.info("Running server listener");
         Scanner in = cl.listenToServer.useDelimiter("#");
         ConcurrentHashMap<String, InetSocketAddress> log = cl.buddyLog;
 
