@@ -43,8 +43,9 @@ public class cs423_project4_wu {
         //Starting up, logging on.
         //--------------------------------------------        
         IM_Client cl = new IM_Client();
-        cl.startup(serverName, portNum, listenPort, backLog);
         
+        cl.startup(serverName, portNum, listenPort, backLog);
+       
         Scanner in = new Scanner(System.in);
         System.out.println("What is your username?");
         String userName = in.next();
@@ -60,9 +61,12 @@ public class cs423_project4_wu {
                 case 'f': cl.getFileNames(); break;
                 case 'd': cl.downloadFile(); break;
                 case 'q': userContinue = false; break;
+                case 'b': cl.listBuddies(); break;
                 default: break;
             }
         }
         
+        cl.shutdown();
+        System.out.println("Bye!");
     }
 }

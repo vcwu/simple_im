@@ -11,10 +11,8 @@ import java.util.logging.Logger;
 
 /*
  * PROBLEMS
- * On Quit. Cleanup nicely!! :(
- * Peer listener is not displaying received messages... so i can't parse em D:
- * File transfer lol.
- * -> work on GUI... 
+ * On Quit. Cleanup nicely!! :( get "socket eception socket closed error
+ * 
  */
 
 /**
@@ -88,7 +86,10 @@ public class IM_Client {
             
         } catch (IOException ex) {
             LOGGER.log(Level.SEVERE, null, ex); //need to exit if can't connect to server
-        }
+            System.out.println("Unable to connect to server. Aborting. ");
+           
+        } 
+        
      
     }
 
@@ -130,6 +131,18 @@ public class IM_Client {
         }
        
         return talker;
+    }
+    
+    
+    /*
+     * Display list of logged on buddies.
+     */
+    public void listBuddies()   {
+        System.out.println("BUDDIES: ");
+        for (String buddy:buddyLog.keySet())    {
+            System.out.println(buddy);
+        }
+    
     }
     
     /**
@@ -204,13 +217,61 @@ public class IM_Client {
      * Download a file from a buddy.
      */
     public void downloadFile()  {
-    
+        
+        System.out.println("Who would you like to download from? ");
+        String user = userInput.nextLine();
+        System.out.println("What file would you like to download? ");
+        String file = userInput.nextLine();
+        
+        Socket talker = findBuddy(user);
+        if(talker != null)  {
+            String payload = String.format("6;%s#", file);
+            Scanner input = null;
+            PrintWriter out = null;
+            try {
+                input = new Scanner(new BufferedReader(new InputStreamReader(talker.getInputStream())));
+                input = input.useDelimiter("#");
+                out = new PrintWriter(talker.getOutputStream(), true);
+                out.print(payload);
+                out.flush();
+                System.out.println("Sent message to "  + user + "\n"+ payload);
+                
+                //get file! yay! 
+                String all, fileChunk;
+                while(input.hasNext())  {
+                    all = input.next();
+                    System.out.println("GOT: " + all);
+                    //better error checking, when it's done
+                    /*
+                    if(!all.startsWith("ack")) {
+                        System.out.println("Error in downloading file. Aborting.");
+                        break;
+                    } 
+                    */
+                    //checking for end...?
+                    fileChunk = all.substring(all.indexOf('\n')); //strip header
+                    System.out.print("Downloading chunk");
+                }
+                
+                
+                out.close();
+                input.close();
+                talker.close();
+            } catch (IOException ex) {
+                LOGGER.log(Level.SEVERE, null, ex);
+            } 
+        }
+        else    {
+            System.out.println(user + " is not logged in.");
+        }
+        
     }
     public void displayMenu()   {
         System.out.println("What would you like to do?");
         System.out.println("\tSend msg to buddy (s)");
         System.out.println("\tGet file list from buddy (f)");
         System.out.println("\tDownload file from buddy (d)");
+        System.out.println("\tGet List of buddies (b)");
         System.out.println("\tQuit (q)");
     }
 }
