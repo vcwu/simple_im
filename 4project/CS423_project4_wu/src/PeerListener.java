@@ -49,7 +49,8 @@ public class PeerListener implements Runnable {
         }   //catch socket close exceptiON?? I'm so confused D: - 
             //SocketException socket closed, when quitting
         catch (IOException ex) {
-            LOGGER.log(Level.SEVERE, null, ex);
+            //LOGGER.log(Level.SEVERE, null, ex);
+            System.out.println("Goodbye from peerlistener!");
         }
    }
  
@@ -91,13 +92,14 @@ class PeerConnection implements Runnable    {
                     break;
                 case('6'):
                     System.out.println("File requested");
-                    sendFile();
+                    sendFile(meat);
                     break;
             }
             
             
             outputToSocket.close();
             inputFromSocket.close();
+            incoming.close();
             
         } catch (IOException ex)    {
             //stuff
@@ -134,7 +136,54 @@ class PeerConnection implements Runnable    {
        outputToSocket.print(payload);
    }
    
-   public void sendFile()   {
+   /*
+    * File transfer! Huzzah!
+    */
+   public void sendFile(String meat) throws IOException   {
+      
+       String fileName = meat.substring(2, meat.length());  //sentinel already stripped
+       LOGGER.log(Level.INFO, "Getting ready to transmit file {0}", fileName);
+       
+       BufferedInputStream file = null;
+       
+        try {
+            
+            file = new BufferedInputStream(new FileInputStream("../files/" + fileName));
+            int CHUNK_SIZE = 512;
+            byte[] chunk = new byte[CHUNK_SIZE];
+            String header, payload, all;
+            
+            int blockCount = 0;
+            
+            while((file.read(chunk, 0, CHUNK_SIZE))> 0) {
+                header = String.format("ack;%d\n", blockCount);
+                payload = new String(chunk) + "#";
+                all =  header + payload;
+                System.out.println("Sending!" + all);
+                outputToSocket.print(all);    
+                blockCount++;
+            }
+            /*
+            //Get last little bits.
+            header = String.format("ack;%d\n", blockCount);
+            payload = new String(chunk) + "#";
+            all = header + payload;
+            System.out.println("Sending!" + all);
+            outputToSocket.print(all);
+            */
+            
+            file.close();   //evil duplicate code D:
+            System.out.println("File transmitted.");
+        } catch (FileNotFoundException ex) {
+            System.out.println("File does not exist.");
+            outputToSocket.print("error; File does not exist.#"); 
+        } catch (IOException ex)    {
+            file.close();   //arrrgh better in finally block?
+            throw ex;
+        }
+        
+        
+       
        
    }
    
